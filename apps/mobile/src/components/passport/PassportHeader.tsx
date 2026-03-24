@@ -77,7 +77,7 @@ export function PassportHeader({ displayName, avatarUrl, memberSince, followersC
       {/* Edit profile button */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
         <Pressable onPress={() => router.push("/settings" as any)}>
-          <View style={{ height: 34, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ height: 34, borderRadius: 8, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontFamily: "Poppins_600SemiBold", fontSize: 13, color: colors.text }}>Edit Profile</Text>
           </View>
         </Pressable>

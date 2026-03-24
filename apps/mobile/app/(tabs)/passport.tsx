@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { Grid3x3, Bookmark } from "lucide-react-native";
 import { useAuthStore } from "@/stores/authStore";
 import { usePassport, type PassportItem } from "@/hooks/usePassport";
 import { useSocialCounts } from "@/hooks/useFollow";
@@ -74,10 +75,11 @@ function CollectionGridCell({ item, cellSize, growthPct }: { item: PassportItem;
           </Text>
         </View>
       )}
-      {/* Smooth gradient fade */}
+      {/* Smooth gradient fade — multi-stop for frosted look */}
       <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.75)"]}
-        style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: cardHeight * 0.5 }}
+        colors={["transparent", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)", "rgba(0,0,0,0.5)", "rgba(0,0,0,0.8)"]}
+        locations={[0, 0.3, 0.5, 0.75, 1]}
+        style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: cardHeight * 0.55 }}
       />
       {/* Content at bottom */}
       <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 7, paddingBottom: 7 }}>
@@ -191,17 +193,23 @@ export default function PassportScreen() {
                 <Text style={{ fontSize: 16, fontFamily: "Poppins_700Bold", color: colors.teal }}>↑{bestFind.growth_pct}%</Text>
               </Pressable>
             )}
-            {/* Instagram-style tabs */}
-            <View style={{ flexDirection: "row", borderTopWidth: 0.5, borderTopColor: colors.isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", marginTop: 4 }}>
-              <Pressable onPress={() => setActiveTab("finds")} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: activeTab === "finds" ? colors.text : "transparent" }}>
-                <Text style={{ fontSize: 13, fontFamily: activeTab === "finds" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "finds" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                  Finds
-                </Text>
+            {/* Tabs with icons */}
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 32, paddingTop: 4, marginBottom: 10 }}>
+              <Pressable onPress={() => setActiveTab("finds")} style={{ alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: activeTab === "finds" ? colors.text : "transparent" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Grid3x3 size={16} color={activeTab === "finds" ? colors.text : colors.textSecondary} strokeWidth={activeTab === "finds" ? 2.5 : 1.8} />
+                  <Text style={{ fontSize: 12, fontFamily: activeTab === "finds" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "finds" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    Finds
+                  </Text>
+                </View>
               </Pressable>
-              <Pressable onPress={() => setActiveTab("collections")} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: activeTab === "collections" ? colors.text : "transparent" }}>
-                <Text style={{ fontSize: 13, fontFamily: activeTab === "collections" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "collections" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                  Collections
-                </Text>
+              <Pressable onPress={() => setActiveTab("collections")} style={{ alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: activeTab === "collections" ? colors.text : "transparent" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Bookmark size={16} color={activeTab === "collections" ? colors.text : colors.textSecondary} strokeWidth={activeTab === "collections" ? 2.5 : 1.8} />
+                  <Text style={{ fontSize: 12, fontFamily: activeTab === "collections" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "collections" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    Collections
+                  </Text>
+                </View>
               </Pressable>
             </View>
           </>
