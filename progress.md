@@ -77,17 +77,57 @@
 
 ---
 
-## Phase 2: Express Backend Service
-**Status: Not started**
+## Phase 2: Express Backend Service ✅
+**Completed: March 24, 2026**
 
-## Phase 3: Mobile App Migration (to Express API)
-**Status: Not started**
+- All API routes: items, users, feed, founders, collections, leaderboard
+- Auth middleware validates Supabase JWTs, API uses service role key (bypasses RLS)
+- Running on VM in tmux session `decibel-api` at port 3001
+- .env symlinked from root
 
-## Phase 4: Growth Tracking & Portfolio
-**Status: Not started**
+---
 
-## Phase 5: Add Flow (Share-a-Link)
-**Status: Not started**
+## Phase 3: Mobile App Migration (to Express API) ✅
+**Completed: March 24, 2026**
 
-## Phase 6: Activity & Notifications
-**Status: Not started**
+- Created `src/lib/api.ts` with apiCall() — Bearer token, 401 retry
+- All 9 hooks migrated from direct Supabase to Express API
+- API URL: `http://159.203.108.156:3001` for device testing
+- Only auth screens (login, settings) still use Supabase directly
+
+---
+
+## Phase 4: Growth Tracking & Portfolio ✅
+**Completed: March 24, 2026**
+
+- `item_metrics` table created (Supabase migration)
+- metrics.ts service: captureItemMetrics, updateAllItemMetrics, calculateTasteScore, getPortfolioGrowth
+- /api/metrics routes: portfolio, update-all (cron), capture
+- Founders route captures metrics on founding
+- VM cron: weekly metrics update Sundays 3am
+- Mobile: usePortfolio hook, taste score badge, best find card, growth % badges on grid
+
+---
+
+## Phase 5: Add Flow (Share-a-Link) ✅
+**Completed: March 24, 2026**
+
+- scraper.ts: URL detection (Spotify, Apple Music, SoundCloud, Google Maps, Instagram)
+- Deezer API for artist metadata (free, no auth)
+- Meta tag fallback for any URL
+- POST /api/items/from-url: parse → preview with existing check
+- Mobile: Search + Paste Link toggle on Discover tab
+- Paste mode: clipboard auto-detect, preview card, Found/Collect buttons
+- Founder threshold: 13,000 Deezer fans
+
+---
+
+## Phase 6: Activity & Notifications ✅
+**Completed: March 24, 2026**
+
+- `notifications` table created (Supabase migration)
+- Notification triggers: collection → founder, follow → followed user, weekly portfolio digest
+- /api/notifications: list, unread-count, mark-read, generate-weekly
+- Mobile: Activity screen with typed notification rows
+- Bell icon on Home screen with unread count badge
+- Auto mark-read on screen open, tap to navigate
