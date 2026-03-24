@@ -3,7 +3,7 @@
  * Routes to platform-specific APIs first (free), AI classification as fallback.
  */
 import { getSpotifyArtist, getArtistFromTrack, getArtistFromAlbum, searchSpotifyArtist } from './spotify';
-import { scrapeInstagramProfile } from './instagram';
+import { scrapeInstagramProfile, cleanInstagramName } from './instagram';
 import { classifyEntity, UNDERGROUND_THRESHOLD } from './classify';
 
 export type UrlDetection = {
@@ -96,6 +96,13 @@ export function detectUrl(url: string): UrlDetection {
   return { category: 'unknown', platform: 'meta_scrape', identifier: null, type: 'unknown' };
 }
 
+function decodeEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+}
+
 /** Scrape generic page meta tags */
 async function scrapeMetaTags(url: string): Promise<{ name?: string; photo_url?: string; description?: string } | null> {
   try {
@@ -112,10 +119,11 @@ async function scrapeMetaTags(url: string): Promise<{ name?: string; photo_url?:
       return regex.exec(html)?.[1] ?? altRegex.exec(html)?.[1] ?? null;
     };
 
+    const rawName = getMetaContent('og:title') ?? getMetaContent('title');
     return {
-      name: getMetaContent('og:title') ?? getMetaContent('title') ?? undefined,
+      name: rawName ? decodeEntities(rawName) : undefined,
       photo_url: getMetaContent('og:image') ?? undefined,
-      description: getMetaContent('og:description') ?? getMetaContent('description') ?? undefined,
+      description: decodeEntities(getMetaContent('og:description') ?? getMetaContent('description') ?? ''),
     };
   } catch {
     return null;
@@ -250,9 +258,10 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
     // Fallback: meta tags + AI
     const meta = await scrapeMetaTags(url);
     if (meta?.name) {
-      const classification = await classifyEntity({ name: meta.name, platform: 'instagram', description: meta.description });
+      const cleanedName = cleanInstagramName(meta.name);
+      const classification = await classifyEntity({ name: cleanedName, platform: 'instagram', description: meta.description });
       return {
-        name: classification.name ?? meta.name.split(/[|\u2013]/)[0].trim(),
+        name: classification.name ?? cleanedName,
         photo_url: meta.photo_url ?? null,
         category: classification.category,
         platform: 'instagram',

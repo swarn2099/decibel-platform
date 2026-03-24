@@ -3,6 +3,28 @@
  * Free, no API key needed — extracts from page HTML meta tags.
  */
 
+/** Decode HTML entities like &#064; &#x2022; &amp; etc. */
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+/** Extract clean name from Instagram page title */
+export function cleanInstagramName(rawTitle: string): string {
+  const decoded = decodeHtmlEntities(rawTitle);
+  // "Le Creuset (@lecreuset) • Instagram photos and videos" → "Le Creuset"
+  const nameMatch = decoded.match(/^(.+?)\s*\(@/);
+  if (nameMatch) return nameMatch[1].trim();
+  // Fallback: remove "• Instagram photos and videos"
+  return decoded.replace(/\s*[•·]\s*Instagram.*$/i, '').trim();
+}
+
 export type InstagramProfile = {
   name: string;
   handle: string;
@@ -40,9 +62,7 @@ export async function scrapeInstagramProfile(handleOrUrl: string): Promise<Insta
     const description = getMetaContent('og:description') ?? getMetaContent('description') ?? '';
     const image = getMetaContent('og:image');
 
-    // Extract name from title: "Name (@handle) • Instagram photos and videos"
-    const nameMatch = title.match(/^(.+?)\s*\(@/);
-    const name = nameMatch?.[1]?.trim() ?? handle;
+    const name = cleanInstagramName(title) || handle;
 
     // Extract followers from description: "123K Followers, 45 Following, 67 Posts"
     let followers = 0;
