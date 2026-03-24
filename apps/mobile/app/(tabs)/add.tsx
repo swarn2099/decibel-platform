@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { X, Music, Star } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
+import { useShareIntentContext } from "expo-share-intent";
 import { useThemeColors } from "@/constants/colors";
 import { useValidateUrl, useFoundFromUrl } from "@/hooks/useAddFromUrl";
 import { useCollectItem } from "@/hooks/useCollect";
@@ -18,7 +19,19 @@ export default function AddScreen() {
   const foundMutation = useFoundFromUrl();
   const collectMutation = useCollectItem();
 
-  // Auto-detect music URLs from clipboard
+  // Handle shared URLs from iOS share sheet
+  let shareIntent: any = null;
+  try { shareIntent = useShareIntentContext(); } catch {}
+
+  useEffect(() => {
+    const sharedUrl = shareIntent?.shareIntent?.webUrl ?? shareIntent?.shareIntent?.text;
+    if (sharedUrl && typeof sharedUrl === "string" && sharedUrl.startsWith("http")) {
+      setLinkUrl(sharedUrl);
+      validateMutation.mutate(sharedUrl);
+    }
+  }, [shareIntent?.shareIntent]);
+
+  // Auto-detect URLs from clipboard
   useEffect(() => {
     (async () => {
       try {
@@ -27,8 +40,8 @@ export default function AddScreen() {
         const text = await Clipboard.getStringAsync();
         if (!text) return;
         const lower = text.toLowerCase();
-        const isMusicUrl = lower.includes("open.spotify.com") || lower.includes("music.apple.com") || lower.includes("soundcloud.com");
-        if (isMusicUrl) {
+        const isUrl = lower.includes("open.spotify.com") || lower.includes("music.apple.com") || lower.includes("soundcloud.com") || lower.includes("instagram.com") || lower.includes("tiktok.com");
+        if (isUrl) {
           setLinkUrl(text);
         }
       } catch {}
@@ -129,7 +142,7 @@ export default function AddScreen() {
                 <>
                   <Music size={32} color={colors.textTertiary} />
                   <Text style={{ fontSize: 15, fontFamily: "Poppins_500Medium", color: colors.textSecondary, textAlign: "center", marginTop: 12 }}>Tap to paste a link</Text>
-                  <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textTertiary, textAlign: "center", marginTop: 4 }}>Spotify · Apple Music · SoundCloud</Text>
+                  <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textTertiary, textAlign: "center", marginTop: 4 }}>Spotify · Apple Music · Instagram · TikTok · any link</Text>
                 </>
               )}
             </Pressable>
