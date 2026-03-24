@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { usePassport, type PassportItem } from "@/hooks/usePassport";
 import { useSocialCounts } from "@/hooks/useFollow";
+import { usePortfolio, type PortfolioItem } from "@/hooks/usePortfolio";
 import { PassportHeader } from "@/components/passport/PassportHeader";
 import { useThemeColors } from "@/constants/colors";
 import { apiCall } from "@/lib/api";
@@ -36,7 +37,7 @@ function useUserProfile() {
   });
 }
 
-function CollectionGridCell({ item, cellSize }: { item: PassportItem; cellSize: number }) {
+function CollectionGridCell({ item, cellSize, growthPct }: { item: PassportItem; cellSize: number; growthPct?: number }) {
   const colors = useThemeColors();
   const router = useRouter();
 
@@ -52,6 +53,14 @@ function CollectionGridCell({ item, cellSize }: { item: PassportItem; cellSize: 
           <Text style={{ fontSize: 24, color: colors.textSecondary }}>{(item.item?.name ?? "?").charAt(0).toUpperCase()}</Text>
         </View>
       )}
+      {/* Growth badge */}
+      {growthPct !== undefined && growthPct !== 0 && item.is_founder && (
+        <View style={{ position: "absolute", top: 4, right: 4, backgroundColor: growthPct > 0 ? "#00D4AA" : "#FF4D6A", borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1 }}>
+          <Text style={{ color: "#FFFFFF", fontSize: 8, fontFamily: "Poppins_600SemiBold" }}>
+            {growthPct > 0 ? "↑" : "↓"}{Math.abs(growthPct)}%
+          </Text>
+        </View>
+      )}
       <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end", paddingHorizontal: 6, paddingBottom: 4 }}>
         <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold" }} numberOfLines={1}>{item.item?.name ?? "Unknown"}</Text>
         <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
@@ -65,12 +74,22 @@ function CollectionGridCell({ item, cellSize }: { item: PassportItem; cellSize: 
 export default function PassportScreen() {
   const colors = useThemeColors();
   const { width: screenWidth } = useWindowDimensions();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"finds" | "collections">("finds");
 
   const { data: profile } = useUserProfile();
   const { data: passportItems, isLoading } = usePassport();
   const { data: socialCounts } = useSocialCounts();
+  const { data: portfolioData } = usePortfolio();
   const user = useAuthStore((s) => s.user);
+
+  // Build growth map from portfolio data
+  const growthMap = new Map<string, { growth_pct: number; founding_metric: number; current_metric: number }>();
+  for (const p of portfolioData?.portfolio ?? []) {
+    growthMap.set(p.item_id, { growth_pct: p.growth_pct, founding_metric: p.founding_metric, current_metric: p.current_metric });
+  }
+  const tasteScore = portfolioData?.taste_score ?? 0;
+  const bestFind = portfolioData?.best_find ?? null;
 
   const finds = (passportItems ?? []).filter((p) => p.is_founder);
   const collections = (passportItems ?? []).filter((p) => !p.is_founder);
@@ -98,7 +117,7 @@ export default function PassportScreen() {
         numColumns={3}
         columnWrapperStyle={{ gap: CELL_GAP, paddingHorizontal: CELL_GAP }}
         contentContainerStyle={{ gap: CELL_GAP, paddingTop: CELL_GAP, paddingBottom: 120 }}
-        renderItem={({ item }) => <CollectionGridCell item={item} cellSize={cellSize} />}
+        renderItem={({ item }) => <CollectionGridCell item={item} cellSize={cellSize} growthPct={growthMap.get(item.item_id)?.growth_pct} />}
         ListHeaderComponent={
           <>
             <PassportHeader
@@ -111,6 +130,38 @@ export default function PassportScreen() {
               collectionsCount={collections.length}
               fanId={profile?.id ?? ""}
             />
+            {/* Taste score */}
+            {tasteScore > 0 && (
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 12, gap: 8 }}>
+                <View style={{ backgroundColor: `${colors.purple}20`, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 13, fontFamily: "Poppins_600SemiBold", color: colors.purple }}>
+                    Taste Score: {tasteScore}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {/* Best find card */}
+            {bestFind && bestFind.growth_pct > 0 && (
+              <Pressable
+                onPress={() => { if (bestFind.item?.slug) router.push(`/artist/${bestFind.item.slug}` as any); }}
+                style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: `${colors.teal}15`, borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", backgroundColor: colors.card }}>
+                  {bestFind.item?.photo_url ? (
+                    <Image source={{ uri: bestFind.item.photo_url }} style={{ width: 40, height: 40 }} contentFit="cover" />
+                  ) : (
+                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                      <Text style={{ fontSize: 16, color: colors.textSecondary }}>{(bestFind.item?.name ?? "?").charAt(0)}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontFamily: "Poppins_500Medium", color: colors.teal, textTransform: "uppercase", letterSpacing: 0.5 }}>Best Find</Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{bestFind.item?.name}</Text>
+                </View>
+                <Text style={{ fontSize: 16, fontFamily: "Poppins_700Bold", color: colors.teal }}>↑{bestFind.growth_pct}%</Text>
+              </Pressable>
+            )}
             {/* Tab pills */}
             <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, marginBottom: 12 }}>
               <Pressable onPress={() => setActiveTab("finds")} style={{ flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: "center", backgroundColor: activeTab === "finds" ? colors.pink : colors.card }}>

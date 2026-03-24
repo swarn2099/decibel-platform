@@ -9,6 +9,7 @@ import { feedRouter } from './routes/feed';
 import { foundersRouter } from './routes/founders';
 import { collectionsRouter } from './routes/collections';
 import { leaderboardRouter } from './routes/leaderboard';
+import { metricsRouter } from './routes/metrics';
 import { authMiddleware } from './middleware/auth';
 import { errorHandler } from './middleware/error';
 
@@ -27,6 +28,7 @@ app.use('/api/feed', authMiddleware, feedRouter);
 app.use('/api/founders', authMiddleware, foundersRouter);
 app.use('/api/collections', authMiddleware, collectionsRouter);
 app.use('/api/leaderboard', authMiddleware, leaderboardRouter);
+app.use('/api/metrics', authMiddleware, metricsRouter);
 
 app.use(errorHandler);
 

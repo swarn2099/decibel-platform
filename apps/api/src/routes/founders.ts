@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../services/supabase';
+import { captureItemMetrics } from '../services/metrics';
 
 export const foundersRouter = Router();
 
@@ -50,6 +51,9 @@ foundersRouter.post('/', async (req: Request, res: Response) => {
     if (error.code === '23505') { res.status(409).json({ error: 'Item already founded' }); return; }
     res.status(500).json({ error: error.message }); return;
   }
+
+  // Capture initial metrics snapshot
+  await captureItemMetrics(item_id).catch(() => {});
 
   res.status(201).json({ data: badge });
 });
