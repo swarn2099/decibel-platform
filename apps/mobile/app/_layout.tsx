@@ -43,6 +43,7 @@ function RootNavigator() {
         <Stack.Screen name="search" options={{ presentation: "card", animation: "slide_from_right" }} />
         <Stack.Screen name="profile/[id]" options={{ presentation: "card", animation: "slide_from_right" }} />
         <Stack.Screen name="settings" options={{ presentation: "card", animation: "slide_from_right" }} />
+        <Stack.Screen name="activity" options={{ presentation: "card", animation: "slide_from_right" }} />
         <Stack.Screen name="followers" options={{ presentation: "card", animation: "slide_from_right" }} />
         <Stack.Screen name="following" options={{ presentation: "card", animation: "slide_from_right" }} />
         <Stack.Screen name="+not-found" />

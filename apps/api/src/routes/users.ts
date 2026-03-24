@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../services/supabase';
+import { notifyFollowed } from '../services/notifications';
 
 export const usersRouter = Router();
 
@@ -223,6 +224,9 @@ usersRouter.post('/:id/follow', async (req: Request, res: Response) => {
     if (error.code === '23505') { res.json({ data: { success: true, already_following: true } }); return; }
     res.status(500).json({ error: error.message }); return;
   }
+
+  // Notify followed user (fire and forget)
+  notifyFollowed(user.id, targetId as string).catch(() => {});
 
   res.json({ data: { success: true, already_following: false } });
 });

@@ -1,12 +1,13 @@
 import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from "react-native-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, Compass, TrendingUp, Trophy } from "lucide-react-native";
+import { Search, Compass, TrendingUp, Trophy, Bell } from "lucide-react-native";
 import { useThemeColors } from "@/constants/colors";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useUserStats } from "@/hooks/useUserStats";
 import { useTrendingArtists } from "@/hooks/useTrendingArtists";
 import { useMyCollectedIds, useCollectItem } from "@/hooks/useCollect";
+import { useUnreadCount } from "@/hooks/useNotifications";
 import { ActivityFeedCard, ActivityFeedEmpty } from "@/components/home/ActivityFeedCard";
 import { StatsBar } from "@/components/home/StatsBar";
 import { TrendingArtistsRow } from "@/components/home/TrendingArtistsRow";
@@ -41,6 +42,7 @@ export default function HomeScreen() {
   const userStats = useUserStats();
   const trendingArtists = useTrendingArtists();
   const collectMutation = useCollectItem();
+  const { data: unreadCount } = useUnreadCount();
   const { collectedIds } = useMyCollectedIds();
   const [refreshing, setRefreshing] = useState(false);
   const [localCollected, setLocalCollected] = useState<Set<string>>(new Set());
@@ -97,7 +99,15 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <GradientTitle />
-        <View style={{ flex: 1, alignItems: "flex-end" }}>
+        <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
+          <Pressable onPress={() => router.push("/activity" as any)} hitSlop={12} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }}>
+            <Bell size={20} color={colors.textSecondary} />
+            {(unreadCount ?? 0) > 0 && (
+              <View style={{ position: "absolute", top: -2, right: -2, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.pink, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 9, fontFamily: "Poppins_700Bold" }}>{unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
           <Pressable onPress={() => router.push("/search" as any)} hitSlop={12} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }}>
             <Search size={20} color={colors.textSecondary} />
           </Pressable>

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../services/supabase';
+import { notifyFounderOfCollection } from '../services/notifications';
 
 export const collectionsRouter = Router();
 
@@ -32,6 +33,10 @@ collectionsRouter.post('/', async (req: Request, res: Response) => {
   });
 
   if (error) { res.status(500).json({ error: error.message }); return; }
+
+  // Notify founder (fire and forget)
+  notifyFounderOfCollection(user.id, item_id).catch(() => {});
+
   res.status(201).json({ data: { success: true, already_collected: false } });
 });
 
