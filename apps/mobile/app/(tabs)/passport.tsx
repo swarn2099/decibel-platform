@@ -61,11 +61,17 @@ function CollectionGridCell({ item, cellSize, growthPct }: { item: PassportItem;
           </Text>
         </View>
       )}
-      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end", paddingHorizontal: 6, paddingBottom: 4 }}>
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 6, paddingVertical: 4 }}>
         <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold" }} numberOfLines={1}>{item.item?.name ?? "Unknown"}</Text>
-        <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
-          {item.is_founder ? "★ Founded" : "Collected"}
-        </Text>
+        {item.is_founder ? (
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
+            {item.item?.category ?? "music"} · {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </Text>
+        ) : (
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
+            Collected
+          </Text>
+        )}
       </View>
     </Pressable>
   );

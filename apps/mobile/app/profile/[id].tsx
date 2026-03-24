@@ -11,6 +11,11 @@ import { useAuthStore } from "@/stores/authStore";
 import { useIsFollowing, useFollowUser, useUnfollowUser, useSocialCounts } from "@/hooks/useFollow";
 import { useThemeColors } from "@/constants/colors";
 
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function UserProfileScreen() {
   const colors = useThemeColors();
   const router = useRouter();
@@ -34,23 +39,19 @@ export default function UserProfileScreen() {
   const unfollowMutation = useUnfollowUser();
   const { data: socialCounts } = useSocialCounts(id);
 
-  const { data: founds } = useQuery({
-    queryKey: ["userFounds", id],
+  // Use passport endpoint (same as own profile) to get combined + deduplicated list
+  const { data: passportItems } = useQuery({
+    queryKey: ["passport", id],
     queryFn: async () => {
-      const res = await apiCall<{ data: any[] }>(`/api/users/${id}/founds`);
+      const res = await apiCall<{ data: any[] }>(`/api/users/${id}/passport`);
       return res.data ?? [];
     },
     enabled: !!id,
   });
 
-  const { data: collections } = useQuery({
-    queryKey: ["userCollections", id],
-    queryFn: async () => {
-      const res = await apiCall<{ data: any[] }>(`/api/users/${id}/collections`);
-      return res.data ?? [];
-    },
-    enabled: !!id,
-  });
+  const finds = (passportItems ?? []).filter((p: any) => p.is_founder);
+  const collections = (passportItems ?? []).filter((p: any) => !p.is_founder);
+  const activeItems = activeTab === "finds" ? finds : collections;
 
   if (isLoading || !profile) {
     return (
@@ -69,15 +70,15 @@ export default function UserProfileScreen() {
   const initial = name.charAt(0).toUpperCase();
   const CELL_GAP = 3;
   const cellSize = (screenWidth - CELL_GAP * 4) / 3;
-  const activeItems = activeTab === "finds" ? (founds ?? []) : (collections ?? []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 }}>
+      {/* Top bar */}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8 }}>
         <Pressable onPress={() => router.back()} style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}>
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{name}</Text>
+        <Text style={{ flex: 1, textAlign: "center", fontSize: 16, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{name}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -89,51 +90,57 @@ export default function UserProfileScreen() {
         contentContainerStyle={{ gap: CELL_GAP, paddingBottom: 100 }}
         ListHeaderComponent={
           <View style={{ paddingBottom: 0 }}>
-            {/* Profile header */}
-            <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-                <View style={{ width: 72, height: 72, borderRadius: 36, overflow: "hidden", borderWidth: 1, borderColor: colors.cardBorder }}>
-                  {profile.avatar_url ? (
-                    <Image source={{ uri: profile.avatar_url }} style={{ width: 72, height: 72 }} contentFit="cover" />
-                  ) : (
-                    <LinearGradient colors={["#FF4D6A", "#9B6DFF"]} style={{ width: 72, height: 72, justifyContent: "center", alignItems: "center" }}>
-                      <Text style={{ fontSize: 28, fontFamily: "Poppins_700Bold", color: "rgba(255,255,255,0.8)" }}>{initial}</Text>
-                    </LinearGradient>
-                  )}
-                </View>
-                <View style={{ flex: 1, flexDirection: "row", justifyContent: "space-around" }}>
-                  <Pressable onPress={() => router.push({ pathname: "/followers" as any, params: { fanId: id } })} style={{ alignItems: "center" }}>
-                    <Text style={{ fontSize: 18, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{socialCounts?.followers_count ?? 0}</Text>
-                    <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Followers</Text>
-                  </Pressable>
-                  <Pressable onPress={() => router.push({ pathname: "/following" as any, params: { fanId: id } })} style={{ alignItems: "center" }}>
-                    <Text style={{ fontSize: 18, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{socialCounts?.following_count ?? 0}</Text>
-                    <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Following</Text>
-                  </Pressable>
-                  <View style={{ alignItems: "center" }}>
-                    <Text style={{ fontSize: 18, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{founds?.length ?? 0}</Text>
-                    <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Finds</Text>
-                  </View>
-                </View>
+            {/* Avatar + stats row */}
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12, gap: 20 }}>
+              <View style={{ width: 80, height: 80, borderRadius: 40, overflow: "hidden", borderWidth: 1, borderColor: colors.cardBorder }}>
+                {profile.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={{ width: 80, height: 80 }} contentFit="cover" />
+                ) : (
+                  <LinearGradient colors={["#FF4D6A", "#9B6DFF"]} style={{ width: 80, height: 80, justifyContent: "center", alignItems: "center" }}>
+                    <Text style={{ fontSize: 32, fontFamily: "Poppins_700Bold", color: "rgba(255,255,255,0.8)" }}>{initial}</Text>
+                  </LinearGradient>
+                )}
               </View>
+              <View style={{ flex: 1, flexDirection: "row", justifyContent: "space-around" }}>
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 18, fontFamily: "Poppins_700Bold", color: colors.text }}>{finds.length}</Text>
+                  <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Finds</Text>
+                </View>
+                <Pressable onPress={() => router.push({ pathname: "/followers" as any, params: { fanId: id } })} style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 18, fontFamily: "Poppins_700Bold", color: colors.text }}>{socialCounts?.followers_count ?? 0}</Text>
+                  <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Followers</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push({ pathname: "/following" as any, params: { fanId: id } })} style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 18, fontFamily: "Poppins_700Bold", color: colors.text }}>{socialCounts?.following_count ?? 0}</Text>
+                  <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Following</Text>
+                </Pressable>
+              </View>
+            </View>
 
-              {!isOwnProfile && (
+            {/* Name */}
+            <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+              <Text style={{ fontSize: 14, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{name}</Text>
+            </View>
+
+            {/* Follow button */}
+            {!isOwnProfile && (
+              <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
                 <Pressable
                   onPress={() => {
                     if (isFollowing) unfollowMutation.mutate({ targetUserId: id! });
                     else followMutation.mutate({ targetUserId: id! });
                   }}
-                  style={{ marginTop: 12, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: isFollowing ? colors.card : colors.pink, borderWidth: isFollowing ? 1 : 0, borderColor: colors.cardBorder }}
+                  style={{ paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: isFollowing ? colors.card : colors.pink, borderWidth: isFollowing ? 1 : 0, borderColor: colors.cardBorder }}
                 >
                   <Text style={{ fontSize: 14, fontFamily: "Poppins_600SemiBold", color: isFollowing ? colors.text : "#FFFFFF" }}>
                     {isFollowing ? "Following" : "Follow"}
                   </Text>
                 </Pressable>
-              )}
-            </View>
+              </View>
+            )}
 
             {/* Instagram-style tabs */}
-            <View style={{ flexDirection: "row", borderTopWidth: 0.5, borderTopColor: colors.isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", borderBottomWidth: 0.5, borderBottomColor: colors.isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", marginBottom: CELL_GAP }}>
+            <View style={{ flexDirection: "row", borderTopWidth: 0.5, borderTopColor: colors.isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", marginBottom: CELL_GAP }}>
               <Pressable onPress={() => setActiveTab("finds")} style={{ flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: activeTab === "finds" ? colors.text : "transparent" }}>
                 <Text style={{ fontSize: 13, fontFamily: activeTab === "finds" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "finds" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
                   Finds
@@ -158,11 +165,17 @@ export default function UserProfileScreen() {
                   <Text style={{ fontSize: 24, color: colors.textSecondary }}>{(i?.name ?? "?").charAt(0).toUpperCase()}</Text>
                 </View>
               )}
-              <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end", paddingHorizontal: 6, paddingBottom: 4 }}>
+              <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 6, paddingVertical: 4 }}>
                 <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold" }} numberOfLines={1}>{i?.name ?? "Unknown"}</Text>
-                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
-                  {item.is_founder ? "★ Founded" : "Collected"}
-                </Text>
+                {item.is_founder ? (
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
+                    {i?.category ?? "music"} · {formatShortDate(item.created_at)}
+                  </Text>
+                ) : (
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
+                    Collected
+                  </Text>
+                )}
               </View>
             </Pressable>
           );

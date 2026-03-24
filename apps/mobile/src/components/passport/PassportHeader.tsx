@@ -21,16 +21,6 @@ function getGradientForName(name: string): [string, string] {
   return GRADIENT_PAIRS[Math.abs(hash) % GRADIENT_PAIRS.length];
 }
 
-function StatCell({ value, label, onPress, colors }: { value: string; label: string; onPress?: () => void; colors: ReturnType<typeof useThemeColors> }) {
-  const Wrapper = onPress ? Pressable : View;
-  return (
-    <Wrapper {...(onPress ? { onPress, hitSlop: 8 } : {})} style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ fontSize: 20, fontFamily: "Poppins_600SemiBold", color: colors.text, lineHeight: 26 }}>{value}</Text>
-      <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary, marginTop: 1 }}>{label}</Text>
-    </Wrapper>
-  );
-}
-
 type Props = {
   displayName: string | null;
   avatarUrl: string | null;
@@ -49,12 +39,10 @@ export function PassportHeader({ displayName, avatarUrl, memberSince, followersC
   const initial = name.charAt(0).toUpperCase();
   const gradientColors = getGradientForName(name);
 
-  const memberDate = new Date(memberSince);
-  const memberLabel = memberDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-
   return (
-    <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+    <View style={{ paddingBottom: 0 }}>
+      {/* Avatar + stats row */}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, gap: 20 }}>
         <View style={{ width: 80, height: 80, borderRadius: 40, overflow: "hidden", borderWidth: 1, borderColor: colors.cardBorder }}>
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={{ width: 80, height: 80 }} contentFit="cover" />
@@ -66,22 +54,29 @@ export function PassportHeader({ displayName, avatarUrl, memberSince, followersC
         </View>
 
         <View style={{ flex: 1, flexDirection: "row", justifyContent: "space-around" }}>
-          <StatCell value={String(followersCount)} label="Followers" colors={colors} onPress={() => router.push({ pathname: "/followers" as any, params: { fanId } })} />
-          <StatCell value={String(followingCount)} label="Following" colors={colors} onPress={() => router.push({ pathname: "/following" as any, params: { fanId } })} />
-          <StatCell value={String(findsCount)} label="Finds" colors={colors} />
-          <StatCell value={String(collectionsCount)} label="Collections" colors={colors} />
+          <View style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 18, fontFamily: "Poppins_700Bold", color: colors.text, lineHeight: 22 }}>{findsCount}</Text>
+            <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Finds</Text>
+          </View>
+          <Pressable onPress={() => router.push({ pathname: "/followers" as any, params: { fanId } })} style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 18, fontFamily: "Poppins_700Bold", color: colors.text, lineHeight: 22 }}>{followersCount}</Text>
+            <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Followers</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push({ pathname: "/following" as any, params: { fanId } })} style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 18, fontFamily: "Poppins_700Bold", color: colors.text, lineHeight: 22 }}>{followingCount}</Text>
+            <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Following</Text>
+          </Pressable>
         </View>
       </View>
 
-      <View style={{ marginTop: 10 }}>
-        <Text style={{ fontSize: 18, fontFamily: "Poppins_600SemiBold", color: colors.text }} numberOfLines={1}>{name}</Text>
-        <Text style={{ fontSize: 13, fontFamily: "Poppins_400Regular", color: colors.textSecondary, marginTop: 2 }}>
-          Member since {memberLabel}
-        </Text>
+      {/* Name + member since */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+        <Text style={{ fontSize: 14, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{name}</Text>
       </View>
 
-      <View style={{ flexDirection: "row", gap: 8, marginTop: 12, marginBottom: 12 }}>
-        <Pressable onPress={() => router.push("/settings" as any)} style={{ flex: 1 }}>
+      {/* Edit profile button */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+        <Pressable onPress={() => router.push("/settings" as any)}>
           <View style={{ height: 34, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontFamily: "Poppins_600SemiBold", fontSize: 13, color: colors.text }}>Edit Profile</Text>
           </View>
