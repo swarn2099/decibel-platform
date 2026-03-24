@@ -73,7 +73,10 @@ export function ActivityFeedCard({ item, onCollect, isCollected = false }: Activ
         </Pressable>
         {onCollect && (
           isCollected ? (
-            <Text style={{ color: colors.textTertiary, fontSize: 11, fontFamily: "Poppins_500Medium" }}>In Passport</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+              <CheckCircle size={12} color={colors.teal} />
+              <Text style={{ color: colors.teal, fontSize: 11, fontFamily: "Poppins_500Medium" }}>Collected</Text>
+            </View>
           ) : (
             <Pressable onPress={() => onCollect(item.performer_id)} style={{ backgroundColor: colors.pink, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 }}>
               <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold" }}>Collect</Text>

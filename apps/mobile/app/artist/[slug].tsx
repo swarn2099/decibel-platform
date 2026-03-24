@@ -7,10 +7,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { WebView } from "react-native-webview";
 import Svg, { Polyline, Line, Text as SvgText } from "react-native-svg";
-import { ChevronLeft, Users, Crown, ExternalLink, Star } from "lucide-react-native";
+import { ChevronLeft, Users, Crown, ExternalLink, Star, CheckCircle, Instagram } from "lucide-react-native";
 import { Colors, useThemeColors } from "@/constants/colors";
 import { useArtistProfile, useArtistFanCount, useArtistFounder, useMyArtistStatus, useArtistMetricsHistory } from "@/hooks/useArtistProfile";
-import { useCollectItem } from "@/hooks/useCollect";
+import { useCollectItem, useUncollectItem } from "@/hooks/useCollect";
 import { formatDate } from "@/lib/formatDate";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -136,12 +136,15 @@ export default function ArtistProfileScreen() {
   const { data: myStatus } = useMyArtistStatus(artist?.id);
   const { data: metricsHistory } = useArtistMetricsHistory(artist?.id);
   const collectMutation = useCollectItem();
+  const uncollectMutation = useUncollectItem();
 
-  const listenLinks = useMemo(() => {
+  const socialLinks = useMemo(() => {
     if (!artist) return [];
-    const links: { url: string; label: string }[] = [];
-    const candidates = [artist.spotify_url, artist.soundcloud_url, artist.mixcloud_url].filter(Boolean) as string[];
-    for (const rawUrl of candidates) {
+    const links: { url: string; label: string; type: "listen" | "social" }[] = [];
+
+    // Listen platforms
+    const listenCandidates = [artist.spotify_url, artist.soundcloud_url, artist.mixcloud_url].filter(Boolean) as string[];
+    for (const rawUrl of listenCandidates) {
       try {
         const url = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
         new URL(url);
@@ -150,9 +153,23 @@ export default function ArtistProfileScreen() {
         if (host.includes("spotify")) label = "Spotify";
         else if (host.includes("soundcloud")) label = "SoundCloud";
         else if (host.includes("mixcloud")) label = "Mixcloud";
-        links.push({ url, label });
+        links.push({ url, label, type: "listen" });
       } catch {}
     }
+
+    // Instagram
+    if (artist.instagram_handle) {
+      const handle = artist.instagram_handle;
+      const url = handle.startsWith("http") ? handle : `https://www.instagram.com/${handle}`;
+      links.push({ url, label: "Instagram", type: "social" });
+    }
+
+    // RA
+    if (artist.ra_url) {
+      const url = artist.ra_url.startsWith("http") ? artist.ra_url : `https://${artist.ra_url}`;
+      links.push({ url, label: "Resident Advisor", type: "social" });
+    }
+
     return links;
   }, [artist]);
 
@@ -236,9 +253,14 @@ export default function ArtistProfileScreen() {
                 <Text style={{ color: colors.gold, fontSize: 15, fontFamily: "Poppins_600SemiBold" }}>★ Founded by you</Text>
               </View>
             ) : myStatus === "collected" ? (
-              <View style={{ backgroundColor: colors.card, borderRadius: 12, paddingVertical: 12, alignItems: "center" }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 15, fontFamily: "Poppins_500Medium" }}>In your passport</Text>
-              </View>
+              <Pressable
+                onPress={() => { if (artist?.id) uncollectMutation.mutate({ itemId: artist.id }); }}
+                disabled={uncollectMutation.isPending}
+                style={{ backgroundColor: colors.card, borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, opacity: uncollectMutation.isPending ? 0.6 : 1 }}
+              >
+                <CheckCircle size={18} color={colors.teal} />
+                <Text style={{ color: colors.teal, fontSize: 15, fontFamily: "Poppins_600SemiBold" }}>Collected</Text>
+              </Pressable>
             ) : (
               <Pressable
                 onPress={() => { if (artist?.id) collectMutation.mutate({ itemId: artist.id }); }}
@@ -295,13 +317,13 @@ export default function ArtistProfileScreen() {
             <ListenersChart data={metricsHistory} colors={colors} />
           )}
 
-          {/* Listen links */}
-          {listenLinks.length > 0 && (
+          {/* Social & listen links */}
+          {socialLinks.length > 0 && (
             <View style={{ marginTop: 16, gap: 8 }}>
-              <Text style={{ fontSize: 13, fontFamily: "Poppins_600SemiBold", color: colors.text, marginBottom: 4 }}>Listen</Text>
-              {listenLinks.map((link) => (
+              <Text style={{ fontSize: 13, fontFamily: "Poppins_600SemiBold", color: colors.text, marginBottom: 4 }}>Links</Text>
+              {socialLinks.map((link) => (
                 <Pressable key={link.url} onPress={() => Linking.openURL(link.url)} style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, borderRadius: 12, padding: 12 }}>
-                  <ExternalLink size={16} color={colors.textSecondary} />
+                  {link.label === "Instagram" ? <Instagram size={16} color={colors.textSecondary} /> : <ExternalLink size={16} color={colors.textSecondary} />}
                   <Text style={{ fontSize: 14, fontFamily: "Poppins_500Medium", color: colors.text }}>{link.label}</Text>
                 </Pressable>
               ))}

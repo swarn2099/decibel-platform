@@ -327,6 +327,66 @@ usersRouter.get('/:id/is-following', async (req: Request, res: Response) => {
   res.json({ data: { is_following: !!data } });
 });
 
+// GET /api/users/:id/profile-stats — stats for the Stats tab
+usersRouter.get('/:id/profile-stats', async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Collections + founds per day (last 30 days)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const [{ data: recentCollections }, { data: recentFounds }] = await Promise.all([
+    supabase.from('collections').select('created_at').eq('user_id', id).gte('created_at', thirtyDaysAgo).order('created_at', { ascending: true }),
+    supabase.from('founder_badges').select('awarded_at').eq('user_id', id).gte('awarded_at', thirtyDaysAgo).order('awarded_at', { ascending: true }),
+  ]);
+
+  const addsByDay: Record<string, number> = {};
+  for (const c of recentCollections ?? []) {
+    const day = c.created_at?.split('T')[0] ?? '';
+    addsByDay[day] = (addsByDay[day] || 0) + 1;
+  }
+  for (const f of recentFounds ?? []) {
+    const day = f.awarded_at?.split('T')[0] ?? '';
+    addsByDay[day] = (addsByDay[day] || 0) + 1;
+  }
+  const addsTimeline = Object.entries(addsByDay).sort().map(([date, count]) => ({ date, count }));
+
+  // Founded items with their current monthly_listeners
+  const { data: founds } = await supabase
+    .from('founder_badges')
+    .select('item_id, items!inner(monthly_listeners)')
+    .eq('user_id', id);
+
+  const listeners = (founds ?? [])
+    .map((f: any) => { const item = Array.isArray(f.items) ? f.items[0] : f.items; return (item as any)?.monthly_listeners ?? 0; })
+    .filter((n: number) => n > 0);
+
+  const avgListeners = listeners.length > 0 ? Math.round(listeners.reduce((a: number, b: number) => a + b, 0) / listeners.length) : 0;
+
+  // Rank among followers + following
+  const { data: connections } = await supabase.from('follows').select('follower_id, following_id').or(`follower_id.eq.${id},following_id.eq.${id}`);
+  const peerIds = new Set<string>();
+  for (const c of connections ?? []) {
+    if (c.follower_id !== id) peerIds.add(c.follower_id);
+    if (c.following_id !== id) peerIds.add(c.following_id);
+  }
+
+  const myFounds = founds?.length ?? 0;
+  let rank = 1;
+  for (const peerId of peerIds) {
+    const { count } = await supabase.from('founder_badges').select('id', { count: 'exact', head: true }).eq('user_id', peerId);
+    if ((count ?? 0) > myFounds) rank++;
+  }
+
+  res.json({
+    data: {
+      adds_timeline: addsTimeline,
+      avg_listeners: avgListeners,
+      total_finds: myFounds,
+      rank,
+      total_peers: peerIds.size + 1,
+    },
+  });
+});
+
 // GET /api/users/search?q=<query>
 usersRouter.get('/search/query', async (req: Request, res: Response) => {
   const { q } = req.query;

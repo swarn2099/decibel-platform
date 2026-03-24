@@ -55,6 +55,21 @@ collectionsRouter.delete('/:id', async (req: Request, res: Response) => {
   res.json({ data: { success: true } });
 });
 
+// DELETE /api/collections/by-item/:itemId — uncollect by item ID
+collectionsRouter.delete('/by-item/:itemId', async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const { itemId } = req.params;
+
+  const { error } = await supabase
+    .from('collections')
+    .delete()
+    .eq('item_id', itemId)
+    .eq('user_id', user.id);
+
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  res.json({ data: { success: true } });
+});
+
 // GET /api/collections/my-ids
 collectionsRouter.get('/my-ids', async (req: Request, res: Response) => {
   const user = (req as any).user;

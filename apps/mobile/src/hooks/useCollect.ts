@@ -21,6 +21,22 @@ export function useCollectItem() {
   });
 }
 
+export function useUncollectItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ itemId }: { itemId: string }) => {
+      return apiCall("/api/collections/by-item/" + itemId, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["activity-feed"] });
+      queryClient.invalidateQueries({ queryKey: ["myCollectedIds"] });
+      queryClient.invalidateQueries({ queryKey: ["passport"] });
+      queryClient.invalidateQueries({ queryKey: ["myArtistStatus"] });
+    },
+  });
+}
+
 export function useMyCollectedIds() {
   const user = useAuthStore((s) => s.user);
 
