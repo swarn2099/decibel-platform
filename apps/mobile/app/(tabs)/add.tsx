@@ -168,9 +168,9 @@ export default function AddScreen() {
                   </View>
                   <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>{preview.platform}</Text>
                 </View>
-                {preview.metrics.follower_count != null && preview.metrics.follower_count > 0 && (
+                {(preview.metrics.monthly_listeners ?? preview.metrics.follower_count) != null && (preview.metrics.monthly_listeners ?? preview.metrics.follower_count)! > 0 && (
                   <Text style={{ fontSize: 13, fontFamily: "Poppins_500Medium", color: colors.textSecondary, marginTop: 8 }}>
-                    {preview.metrics.follower_count.toLocaleString()} fans
+                    {(preview.metrics.monthly_listeners ?? preview.metrics.follower_count)!.toLocaleString()} {preview.metrics.monthly_listeners ? "followers" : "fans"}
                   </Text>
                 )}
 

@@ -180,45 +180,56 @@ async function scrapeMetaTags(url: string): Promise<Partial<ScrapedPreview> | nu
 }
 
 export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null> {
+  // Import Spotify service dynamically to avoid circular deps
+  const { getSpotifyArtist, getArtistFromTrack, getArtistFromAlbum, searchSpotifyArtist } = await import('./spotify');
   const detection = detectUrl(url);
 
   // --- SPOTIFY ---
-  if (detection.platform === 'spotify') {
-    const spotifyData = await scrapeSpotifyPage(url);
-    let artistName = spotifyData?.name ?? null;
-    let monthly_listeners = spotifyData?.monthly_listeners;
-    let photo_url = spotifyData?.photo_url ?? null;
-    let spotify_id = spotifyData?.spotify_id ?? detection.identifier ?? undefined;
+  if (detection.platform === 'spotify' && detection.identifier) {
+    let spotifyArtist = null;
 
-    // Fallback: meta tags
-    if (!artistName) {
-      const meta = await scrapeMetaTags(url);
-      if (meta?.name) {
-        artistName = meta.name.split(/[|–—·]/)[0].trim();
-        if (meta.photo_url) photo_url = meta.photo_url;
-      }
+    if (detection.type === 'artist') {
+      spotifyArtist = await getSpotifyArtist(detection.identifier);
+    } else if (detection.type === 'track') {
+      spotifyArtist = await getArtistFromTrack(detection.identifier);
+    } else if (detection.type === 'album') {
+      spotifyArtist = await getArtistFromAlbum(detection.identifier);
     }
 
-    if (!artistName) return null;
+    if (spotifyArtist) {
+      return {
+        name: spotifyArtist.name,
+        photo_url: spotifyArtist.image_url,
+        category: 'music',
+        platform: 'spotify',
+        genres: spotifyArtist.genres,
+        metrics: {
+          monthly_listeners: spotifyArtist.followers, // Spotify API returns followers; monthly listeners aren't in the API
+          follower_count: spotifyArtist.followers,
+        },
+        spotify_url: `https://open.spotify.com/artist/${spotifyArtist.id}`,
+        spotify_id: spotifyArtist.id,
+      };
+    }
 
-    // Get genres and fallback photo from Deezer
-    const deezer = await scrapeDeezerArtist(artistName);
-    const genres = deezer?.genres ?? [];
-    if (!photo_url && deezer?.photo_url) photo_url = deezer.photo_url;
-
-    return {
-      name: artistName,
-      photo_url,
-      category: 'music',
-      platform: 'spotify',
-      genres,
-      metrics: {
-        monthly_listeners: monthly_listeners ?? undefined,
-        follower_count: deezer?.follower_count ?? undefined,
-      },
-      spotify_url: detection.type === 'artist' ? url : undefined,
-      spotify_id,
-    };
+    // Fallback: scrape page + Deezer
+    const spotifyPage = await scrapeSpotifyPage(url);
+    if (spotifyPage?.name) {
+      const deezer = await scrapeDeezerArtist(spotifyPage.name);
+      return {
+        name: spotifyPage.name,
+        photo_url: spotifyPage.photo_url ?? deezer?.photo_url ?? null,
+        category: 'music',
+        platform: 'spotify',
+        genres: deezer?.genres ?? [],
+        metrics: {
+          monthly_listeners: spotifyPage.monthly_listeners,
+          follower_count: deezer?.follower_count,
+        },
+        spotify_url: url,
+        spotify_id: spotifyPage.spotify_id ?? detection.identifier ?? undefined,
+      };
+    }
   }
 
   // --- APPLE MUSIC ---
@@ -226,7 +237,6 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
     const meta = await scrapeMetaTags(url);
     let artistName = meta?.name?.split(/[|–—·]/)[0].trim() ?? null;
 
-    // For song/album pages: "Song by Artist on Apple Music"
     if (meta?.name && detection.type === 'track') {
       const byMatch = meta.name.match(/by\s+(.+?)(?:\s+on\s+Apple\s+Music|$)/i);
       if (byMatch) artistName = byMatch[1].trim();
@@ -234,16 +244,24 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
 
     if (!artistName) return null;
 
+    // Cross-reference on Spotify to get followers + genres
+    const spotifyMatch = await searchSpotifyArtist(artistName);
     const deezer = await scrapeDeezerArtist(artistName);
 
     return {
-      name: deezer?.name ?? artistName,
-      photo_url: deezer?.photo_url ?? meta?.photo_url ?? null,
+      name: spotifyMatch?.name ?? deezer?.name ?? artistName,
+      photo_url: spotifyMatch?.image_url ?? deezer?.photo_url ?? meta?.photo_url ?? null,
       category: 'music',
       platform: 'apple_music',
-      genres: deezer?.genres ?? [],
-      metrics: { follower_count: deezer?.follower_count ?? undefined },
+      genres: spotifyMatch?.genres ?? deezer?.genres ?? [],
+      metrics: {
+        monthly_listeners: spotifyMatch?.followers ?? undefined,
+        follower_count: deezer?.follower_count ?? undefined,
+      },
       apple_music_url: url,
+      // Store Spotify info for cross-reference
+      spotify_url: spotifyMatch ? `https://open.spotify.com/artist/${spotifyMatch.id}` : undefined,
+      spotify_id: spotifyMatch?.id,
     };
   }
 
@@ -260,16 +278,23 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
     }
     if (!artistName) return null;
 
+    // Cross-reference on Spotify + Deezer
+    const spotifyMatch = await searchSpotifyArtist(artistName);
     const deezer = await scrapeDeezerArtist(artistName);
 
     return {
-      name: deezer?.name ?? artistName,
-      photo_url: deezer?.photo_url ?? null,
+      name: spotifyMatch?.name ?? deezer?.name ?? artistName,
+      photo_url: spotifyMatch?.image_url ?? deezer?.photo_url ?? null,
       category: 'music',
       platform: 'soundcloud',
-      genres: deezer?.genres ?? [],
-      metrics: { follower_count: deezer?.follower_count ?? undefined },
+      genres: spotifyMatch?.genres ?? deezer?.genres ?? [],
+      metrics: {
+        monthly_listeners: spotifyMatch?.followers ?? undefined,
+        follower_count: deezer?.follower_count ?? undefined,
+      },
       soundcloud_url: url,
+      spotify_url: spotifyMatch ? `https://open.spotify.com/artist/${spotifyMatch.id}` : undefined,
+      spotify_id: spotifyMatch?.id,
     };
   }
 
@@ -287,7 +312,9 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
 }
 
 export function isAboveThreshold(preview: ScrapedPreview): boolean {
+  // Spotify followers > 1M = too big
   if (preview.metrics.monthly_listeners && preview.metrics.monthly_listeners > FOUNDER_THRESHOLD) return true;
-  if (preview.metrics.follower_count && preview.metrics.follower_count > 13000) return true;
+  // Deezer fans > 13K ≈ correlates to big artist
+  if (preview.metrics.follower_count && preview.metrics.follower_count > 13000 && !preview.metrics.monthly_listeners) return true;
   return false;
 }
