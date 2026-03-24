@@ -104,6 +104,7 @@ export type FounderInfo = {
   avatar_url: string | null;
   awarded_at: string;
   user_id: string;
+  total_founds?: number;
 };
 
 export type ItemFan = {

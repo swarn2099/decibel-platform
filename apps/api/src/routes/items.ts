@@ -186,6 +186,48 @@ itemsRouter.get('/:id/founder', async (req: Request, res: Response) => {
   });
 });
 
+// GET /api/items/:id/metrics-history — monthly listeners over time
+itemsRouter.get('/:id/metrics-history', async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from('item_metrics')
+    .select('metric_date, data')
+    .eq('item_id', id)
+    .order('metric_date', { ascending: true });
+
+  if (error) { res.status(500).json({ error: error.message }); return; }
+
+  // Also get founding snapshot from founder_badge
+  const { data: badge } = await supabase
+    .from('founder_badges')
+    .select('awarded_at, metric_snapshot')
+    .eq('item_id', id)
+    .maybeSingle();
+
+  const points: { date: string; listeners: number }[] = [];
+
+  // Add founding point if available
+  if (badge?.metric_snapshot) {
+    const snap = badge.metric_snapshot as Record<string, any>;
+    const listeners = snap.monthly_listeners ?? snap.follower_count ?? 0;
+    if (listeners > 0) {
+      points.push({ date: badge.awarded_at?.split('T')[0] ?? '', listeners });
+    }
+  }
+
+  // Add metric history points
+  for (const row of data ?? []) {
+    const d = row.data as Record<string, any>;
+    const listeners = d?.monthly_listeners ?? d?.follower_count ?? 0;
+    if (listeners > 0) {
+      points.push({ date: row.metric_date, listeners });
+    }
+  }
+
+  res.json({ data: points });
+});
+
 // POST /api/items — create new item (with founder badge)
 itemsRouter.post('/', async (req: Request, res: Response) => {
   const user = (req as any).user;

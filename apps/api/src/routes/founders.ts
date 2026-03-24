@@ -76,6 +76,13 @@ foundersRouter.get('/check/:itemId', async (req: Request, res: Response) => {
   }
 
   const u = Array.isArray(data.users) ? data.users[0] : data.users;
+
+  // Get total founds count for this user
+  const { count: totalFounds } = await supabase
+    .from('founder_badges')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', data.user_id);
+
   res.json({
     data: {
       is_founded: true,
@@ -84,6 +91,7 @@ foundersRouter.get('/check/:itemId', async (req: Request, res: Response) => {
         name: (u as any)?.name ?? 'User',
         avatar_url: (u as any)?.avatar_url ?? null,
         awarded_at: data.awarded_at,
+        total_founds: totalFounds ?? 0,
       },
     },
   });

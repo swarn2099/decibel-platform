@@ -77,6 +77,20 @@ export function useMyArtistStatus(itemId: string | undefined) {
   });
 }
 
+export type MetricsPoint = { date: string; listeners: number };
+
+export function useArtistMetricsHistory(itemId: string | undefined) {
+  return useQuery<MetricsPoint[]>({
+    queryKey: ["artistMetrics", itemId],
+    queryFn: async () => {
+      const res = await apiCall<{ data: MetricsPoint[] }>(`/api/items/${itemId}/metrics-history`);
+      return res.data ?? [];
+    },
+    staleTime: 30 * 60 * 1000,
+    enabled: !!itemId,
+  });
+}
+
 export function useArtistFans(itemId: string | undefined) {
   return useQuery<ItemFan[]>({
     queryKey: ["artistFans", itemId],
