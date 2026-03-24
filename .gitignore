@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+
+# Expo
+.expo/
+ios/
+android/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
