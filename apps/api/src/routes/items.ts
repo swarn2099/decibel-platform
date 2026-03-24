@@ -1,7 +1,60 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../services/supabase';
+import { scrapeFromUrl, isAboveThreshold, detectUrl } from '../services/scraper';
 
 export const itemsRouter = Router();
+
+// POST /api/items/from-url — Parse a URL and return preview
+itemsRouter.post('/from-url', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') { res.status(400).json({ error: 'url is required' }); return; }
+
+    const preview = await scrapeFromUrl(url);
+    if (!preview) { res.status(422).json({ error: 'Could not extract data from URL' }); return; }
+
+    // Check if item already exists by name (fuzzy match)
+    const { data: existing } = await supabase
+      .from('items')
+      .select('id, name, slug')
+      .ilike('name', preview.name)
+      .limit(1)
+      .maybeSingle();
+
+    let existingFounder = null;
+    if (existing) {
+      const { data: founder } = await supabase
+        .from('founder_badges')
+        .select('user_id, users!inner(name)')
+        .eq('item_id', existing.id)
+        .maybeSingle();
+      if (founder) {
+        const u = Array.isArray(founder.users) ? founder.users[0] : founder.users;
+        existingFounder = { user_id: founder.user_id, username: (u as any)?.name ?? 'Unknown' };
+      }
+    }
+
+    res.json({
+      data: {
+        preview: {
+          name: preview.name,
+          photo_url: preview.photo_url,
+          category: preview.category,
+          platform: preview.platform,
+          genres: preview.genres,
+          metrics: preview.metrics,
+          spotify_url: preview.spotify_url,
+          spotify_id: preview.spotify_id,
+          soundcloud_url: preview.soundcloud_url,
+          is_above_threshold: isAboveThreshold(preview),
+        },
+        existing_item_id: existing?.id ?? null,
+        existing_item_slug: existing?.slug ?? null,
+        existing_founder: existingFounder,
+      },
+    });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
 
 // GET /api/items/search?q=<query>&category=<category>
 itemsRouter.get('/search', async (req: Request, res: Response) => {
