@@ -1,11 +1,16 @@
 /**
  * AI-powered classification for entities that don't have platform-specific APIs.
- * Uses OpenAI GPT-4o-mini (~$0.001 per call) as a cheap, fast classifier.
+ * Uses Anthropic Claude Sonnet as the classifier.
  * Only called when free APIs can't determine category or underground score.
  */
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let client: Anthropic | null = null;
+function getClient(): Anthropic | null {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return client;
+}
 
 export type ClassificationResult = {
   score: number; // 1-100: 1=completely unknown, 100=household name
@@ -25,20 +30,18 @@ export async function classifyEntity(params: {
   followerCount?: number;
   description?: string;
 }): Promise<ClassificationResult> {
-  if (!process.env.OPENAI_API_KEY) {
-    // Fallback: if no API key, assume foundable
+  const anthropic = getClient();
+  if (!anthropic) {
     return { score: 30, category: params.category ?? 'other', reason: 'AI classification unavailable' };
   }
 
   try {
-    const res = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0,
+    const res = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 150,
-      response_format: { type: 'json_object' },
       messages: [
         {
-          role: 'system',
+          role: 'user',
           content: `You classify entities for an app where users discover underground/emerging things before they blow up. Rate how mainstream something is on a 1-100 scale.
 
 Guidelines:
@@ -50,25 +53,21 @@ Guidelines:
 
 Categories: music, fashion, restaurant, art, tech, podcast, other
 
-Respond as JSON: {"score": N, "category": "string", "reason": "one line", "name": "cleaned name if needed"}`,
-        },
-        {
-          role: 'user',
-          content: `Entity: ${params.name}
+Entity: ${params.name}
 ${params.category ? `Suspected category: ${params.category}` : ''}
 ${params.platform ? `Found on: ${params.platform}` : ''}
 ${params.followerCount ? `Known followers: ${params.followerCount.toLocaleString()}` : ''}
 ${params.description ? `Description: ${params.description}` : ''}
 
-Rate this entity.`,
+Respond ONLY with JSON, no other text: {"score": N, "category": "string", "reason": "one line", "name": "cleaned name if needed"}`,
         },
       ],
     });
 
-    const content = res.choices[0]?.message?.content;
-    if (!content) throw new Error('No response');
+    const content = res.content[0];
+    if (content.type !== 'text') throw new Error('No text response');
 
-    const parsed = JSON.parse(content) as ClassificationResult;
+    const parsed = JSON.parse(content.text) as ClassificationResult;
     return {
       score: Math.max(1, Math.min(100, parsed.score ?? 50)),
       category: parsed.category ?? params.category ?? 'other',
