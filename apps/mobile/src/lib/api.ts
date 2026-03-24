@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 
 // For device testing: use VM's public IP
 // For local simulator: use localhost
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || "https://decibel-platform.onrender.com";
 
 export async function apiCall<T>(
   path: string,
