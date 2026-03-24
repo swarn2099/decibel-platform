@@ -1,6 +1,7 @@
 import { View, Text, FlatList, Pressable, useWindowDimensions, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
@@ -37,41 +38,63 @@ function useUserProfile() {
   });
 }
 
+const CARD_ASPECT = 1.3; // taller than square (like 4:5)
+
+function formatCardDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function categoryLabel(cat: string): string {
+  if (cat === "music") return "Artist";
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
 function CollectionGridCell({ item, cellSize, growthPct }: { item: PassportItem; cellSize: number; growthPct?: number }) {
   const colors = useThemeColors();
   const router = useRouter();
+  const cardHeight = cellSize * CARD_ASPECT;
 
   return (
     <Pressable
       onPress={() => { if (item.item?.slug) router.push(`/artist/${item.item.slug}` as any); }}
-      style={{ width: cellSize, height: cellSize, borderRadius: 6, overflow: "hidden", backgroundColor: colors.card }}
+      style={{ width: cellSize, height: cardHeight, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}
     >
       {item.item?.photo_url ? (
-        <Image source={{ uri: item.item.photo_url }} style={{ width: cellSize, height: cellSize }} contentFit="cover" />
+        <Image source={{ uri: item.item.photo_url }} style={{ width: cellSize, height: cardHeight }} contentFit="cover" />
       ) : (
         <View style={{ flex: 1, backgroundColor: colors.card, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ fontSize: 24, color: colors.textSecondary }}>{(item.item?.name ?? "?").charAt(0).toUpperCase()}</Text>
+          <Text style={{ fontSize: 28, color: colors.textSecondary }}>{(item.item?.name ?? "?").charAt(0).toUpperCase()}</Text>
         </View>
       )}
       {/* Growth badge */}
       {growthPct !== undefined && growthPct !== 0 && item.is_founder && (
-        <View style={{ position: "absolute", top: 4, right: 4, backgroundColor: growthPct > 0 ? "#00D4AA" : "#FF4D6A", borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1 }}>
+        <View style={{ position: "absolute", top: 6, right: 6, backgroundColor: growthPct > 0 ? "#00D4AA" : "#FF4D6A", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2 }}>
           <Text style={{ color: "#FFFFFF", fontSize: 8, fontFamily: "Poppins_600SemiBold" }}>
             {growthPct > 0 ? "↑" : "↓"}{Math.abs(growthPct)}%
           </Text>
         </View>
       )}
-      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 6, paddingVertical: 4 }}>
-        <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold" }} numberOfLines={1}>{item.item?.name ?? "Unknown"}</Text>
-        {item.is_founder ? (
-          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
-            {item.item?.category ?? "music"} · {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-          </Text>
-        ) : (
-          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
-            Collected
-          </Text>
-        )}
+      {/* Smooth gradient fade */}
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.75)"]}
+        style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: cardHeight * 0.5 }}
+      />
+      {/* Content at bottom */}
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 7, paddingBottom: 7 }}>
+        <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold", lineHeight: 14 }} numberOfLines={1}>{item.item?.name ?? "Unknown"}</Text>
+        {/* Category chip + date */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+          <View style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
+            <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 8, fontFamily: "Poppins_500Medium" }}>
+              {categoryLabel(item.item?.category ?? "music")}
+            </Text>
+          </View>
+          {item.is_founder && (
+            <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 8, fontFamily: "Poppins_400Regular" }}>
+              {formatCardDate(item.created_at)}
+            </Text>
+          )}
+        </View>
       </View>
     </Pressable>
   );

@@ -11,9 +11,15 @@ import { useAuthStore } from "@/stores/authStore";
 import { useIsFollowing, useFollowUser, useUnfollowUser, useSocialCounts } from "@/hooks/useFollow";
 import { useThemeColors } from "@/constants/colors";
 
+const CARD_ASPECT = 1.3;
+
 function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function categoryLabel(cat: string): string {
+  if (cat === "music") return "Artist";
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
 }
 
 export default function UserProfileScreen() {
@@ -70,6 +76,7 @@ export default function UserProfileScreen() {
   const initial = name.charAt(0).toUpperCase();
   const CELL_GAP = 3;
   const cellSize = (screenWidth - CELL_GAP * 4) / 3;
+  const cardHeight = cellSize * CARD_ASPECT;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
@@ -157,25 +164,33 @@ export default function UserProfileScreen() {
         renderItem={({ item }) => {
           const i = item.item;
           return (
-            <Pressable onPress={() => { if (i?.slug) router.push(`/artist/${i.slug}` as any); }} style={{ width: cellSize, height: cellSize, borderRadius: 6, overflow: "hidden", backgroundColor: colors.card }}>
+            <Pressable onPress={() => { if (i?.slug) router.push(`/artist/${i.slug}` as any); }} style={{ width: cellSize, height: cardHeight, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}>
               {i?.photo_url ? (
-                <Image source={{ uri: i.photo_url }} style={{ width: cellSize, height: cellSize }} contentFit="cover" />
+                <Image source={{ uri: i.photo_url }} style={{ width: cellSize, height: cardHeight }} contentFit="cover" />
               ) : (
                 <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                  <Text style={{ fontSize: 24, color: colors.textSecondary }}>{(i?.name ?? "?").charAt(0).toUpperCase()}</Text>
+                  <Text style={{ fontSize: 28, color: colors.textSecondary }}>{(i?.name ?? "?").charAt(0).toUpperCase()}</Text>
                 </View>
               )}
-              <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 6, paddingVertical: 4 }}>
-                <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold" }} numberOfLines={1}>{i?.name ?? "Unknown"}</Text>
-                {item.is_founder ? (
-                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
-                    {i?.category ?? "music"} · {formatShortDate(item.created_at)}
-                  </Text>
-                ) : (
-                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Poppins_400Regular" }} numberOfLines={1}>
-                    Collected
-                  </Text>
-                )}
+              {/* Smooth gradient fade */}
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.75)"]}
+                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: cardHeight * 0.5 }}
+              />
+              <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 7, paddingBottom: 7 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Poppins_600SemiBold", lineHeight: 14 }} numberOfLines={1}>{i?.name ?? "Unknown"}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 8, fontFamily: "Poppins_500Medium" }}>
+                      {categoryLabel(i?.category ?? "music")}
+                    </Text>
+                  </View>
+                  {item.is_founder && (
+                    <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 8, fontFamily: "Poppins_400Regular" }}>
+                      {formatShortDate(item.created_at)}
+                    </Text>
+                  )}
+                </View>
               </View>
             </Pressable>
           );
