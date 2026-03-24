@@ -4,12 +4,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Compass, TrendingUp, Trophy, Bell } from "lucide-react-native";
 import { useThemeColors } from "@/constants/colors";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
-import { useUserStats } from "@/hooks/useUserStats";
+
 import { useTrendingArtists } from "@/hooks/useTrendingArtists";
 import { useMyCollectedIds, useCollectItem } from "@/hooks/useCollect";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { ActivityFeedCard, ActivityFeedEmpty } from "@/components/home/ActivityFeedCard";
-import { StatsBar } from "@/components/home/StatsBar";
+
 import { TrendingArtistsRow } from "@/components/home/TrendingArtistsRow";
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
@@ -39,7 +39,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const activityFeed = useActivityFeed();
-  const userStats = useUserStats();
   const trendingArtists = useTrendingArtists();
   const collectMutation = useCollectItem();
   const { data: unreadCount } = useUnreadCount();
@@ -51,7 +50,6 @@ export default function HomeScreen() {
     setRefreshing(true);
     await Promise.all([
       activityFeed.refetch(),
-      queryClient.invalidateQueries({ queryKey: ["user-stats"] }),
       queryClient.invalidateQueries({ queryKey: ["trending-artists"] }),
     ]);
     setRefreshing(false);
@@ -113,8 +111,6 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
-
-      <StatsBar artists={userStats.finds} founders={userStats.founders} influence={userStats.influence} isLoading={userStats.isLoading} />
 
       <View style={{ marginBottom: 8 }}>
         <TrendingArtistsRow artists={trendingArtists.artists} isLoading={trendingArtists.isLoading} />

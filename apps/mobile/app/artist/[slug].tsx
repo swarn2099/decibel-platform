@@ -149,7 +149,7 @@ export default function ArtistProfileScreen() {
                   Founded by {founder.name ?? "Unknown"}
                 </Text>
                 <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: colors.textTertiary }}>
-                  {formatDate(founder.awarded_at)}
+                  Added on {formatDate(founder.awarded_at)}
                 </Text>
               </View>
             </View>
