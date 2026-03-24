@@ -260,7 +260,7 @@ usersRouter.get('/:id/followers', async (req: Request, res: Response) => {
 
   const { data, error } = await supabase
     .from('follows')
-    .select('follower_id, users!follows_follower_id_fkey(id, name, avatar_url)')
+    .select('follower_id, users!fan_follows_follower_id_fkey(id, name, avatar_url)')
     .eq('following_id', id);
 
   if (error) { res.status(500).json({ error: error.message }); return; }
@@ -279,7 +279,7 @@ usersRouter.get('/:id/following', async (req: Request, res: Response) => {
 
   const { data, error } = await supabase
     .from('follows')
-    .select('following_id, users!follows_following_id_fkey(id, name, avatar_url)')
+    .select('following_id, users!fan_follows_following_id_fkey(id, name, avatar_url)')
     .eq('follower_id', id);
 
   if (error) { res.status(500).json({ error: error.message }); return; }

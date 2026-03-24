@@ -13,7 +13,8 @@ export function useArtistProfile(slug: string) {
     queryKey: ["artist", slug],
     queryFn: async () => {
       try {
-        return await apiCall<ItemDetailResponse>(`/api/items/by-slug/${slug}`);
+        const res = await apiCall<{ data: ItemDetailResponse }>(`/api/items/by-slug/${slug}`);
+        return res.data ?? null;
       } catch (err: any) {
         if (err.message?.includes("404")) return null;
         throw err;

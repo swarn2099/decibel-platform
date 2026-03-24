@@ -9,7 +9,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 const TAB_CONFIG: { name: string; title: string; Icon: LucideIcon; isCenter?: boolean }[] = [
   { name: "index", title: "Home", Icon: House },
   { name: "add", title: "Add", Icon: Plus, isCenter: true },
-  { name: "passport", title: "Passport", Icon: Ticket },
+  { name: "passport", title: "Profile", Icon: Ticket },
 ];
 
 export const TAB_BAR_HEIGHT = 60;
