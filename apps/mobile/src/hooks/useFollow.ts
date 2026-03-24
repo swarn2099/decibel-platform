@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { apiCall } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
 export function useIsFollowing(targetUserId: string | undefined) {
@@ -8,14 +8,10 @@ export function useIsFollowing(targetUserId: string | undefined) {
   return useQuery({
     queryKey: ["isFollowing", user?.id, targetUserId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("follows")
-        .select("id")
-        .eq("follower_id", user!.id)
-        .eq("following_id", targetUserId!)
-        .maybeSingle();
-
-      return !!data;
+      const res = await apiCall<{ data: { is_following: boolean } }>(
+        `/api/users/${targetUserId}/is-following`
+      );
+      return res.data?.is_following ?? false;
     },
     enabled: !!user?.id && !!targetUserId && user.id !== targetUserId,
     staleTime: 5 * 60 * 1000,
@@ -24,15 +20,10 @@ export function useIsFollowing(targetUserId: string | undefined) {
 
 export function useFollowUser() {
   const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
 
   return useMutation({
     mutationFn: async ({ targetUserId }: { targetUserId: string }) => {
-      const { error } = await supabase.from("follows").insert({
-        follower_id: user!.id,
-        following_id: targetUserId,
-      });
-      if (error) throw error;
+      return apiCall(`/api/users/${targetUserId}/follow`, { method: "POST" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["isFollowing"] });
@@ -44,16 +35,10 @@ export function useFollowUser() {
 
 export function useUnfollowUser() {
   const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
 
   return useMutation({
     mutationFn: async ({ targetUserId }: { targetUserId: string }) => {
-      const { error } = await supabase
-        .from("follows")
-        .delete()
-        .eq("follower_id", user!.id)
-        .eq("following_id", targetUserId);
-      if (error) throw error;
+      return apiCall(`/api/users/${targetUserId}/follow`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["isFollowing"] });
@@ -70,20 +55,10 @@ export function useSocialCounts(userId?: string) {
   return useQuery({
     queryKey: ["socialCounts", targetId],
     queryFn: async () => {
-      const { count: followersCount } = await supabase
-        .from("follows")
-        .select("id", { count: "exact", head: true })
-        .eq("following_id", targetId!);
-
-      const { count: followingCount } = await supabase
-        .from("follows")
-        .select("id", { count: "exact", head: true })
-        .eq("follower_id", targetId!);
-
-      return {
-        followers_count: followersCount ?? 0,
-        following_count: followingCount ?? 0,
-      };
+      const res = await apiCall<{ data: { followers_count: number; following_count: number } }>(
+        `/api/users/${targetId}/social-counts`
+      );
+      return res.data;
     },
     enabled: !!targetId,
     staleTime: 5 * 60 * 1000,

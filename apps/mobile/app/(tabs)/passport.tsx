@@ -8,7 +8,7 @@ import { usePassport, type PassportItem } from "@/hooks/usePassport";
 import { useSocialCounts } from "@/hooks/useFollow";
 import { PassportHeader } from "@/components/passport/PassportHeader";
 import { useThemeColors } from "@/constants/colors";
-import { supabase } from "@/lib/supabase";
+import { apiCall } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
 type UserProfile = {
@@ -24,13 +24,12 @@ function useUserProfile() {
   return useQuery<UserProfile | null>({
     queryKey: ["userProfile", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, name, avatar_url, city, created_at")
-        .eq("id", user!.id)
-        .single();
-      if (error) return null;
-      return data;
+      try {
+        const res = await apiCall<{ data: UserProfile }>(`/api/users/me`);
+        return res.data;
+      } catch {
+        return null;
+      }
     },
     staleTime: 10 * 60 * 1000,
     enabled: !!user?.id,

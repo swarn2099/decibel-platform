@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { apiCall } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
+
+type StatsResponse = {
+  data: {
+    finds: number;
+    founders: number;
+    influence: number;
+  };
+};
 
 export function useUserStats() {
   const user = useAuthStore((s) => s.user);
@@ -8,42 +16,8 @@ export function useUserStats() {
   const { data, isLoading } = useQuery({
     queryKey: ["user-stats", user?.id],
     queryFn: async () => {
-      const userId = user?.id;
-      if (!userId) return { finds: 0, founders: 0, influence: 0 };
-
-      // Count collections (finds)
-      const { count: findsCount } = await supabase
-        .from("collections")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-
-      // Count founder badges
-      const { count: foundersCount } = await supabase
-        .from("founder_badges")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-
-      // Influence: count collections on items I founded
-      const { data: myFoundedItems } = await supabase
-        .from("founder_badges")
-        .select("item_id")
-        .eq("user_id", userId);
-
-      let influence = 0;
-      if (myFoundedItems?.length) {
-        const itemIds = myFoundedItems.map((f) => f.item_id);
-        const { count } = await supabase
-          .from("collections")
-          .select("id", { count: "exact", head: true })
-          .in("item_id", itemIds);
-        influence = count ?? 0;
-      }
-
-      return {
-        finds: findsCount ?? 0,
-        founders: foundersCount ?? 0,
-        influence,
-      };
+      const res = await apiCall<StatsResponse>(`/api/users/${user!.id}/stats`);
+      return res.data;
     },
     staleTime: 2 * 60 * 1000,
     enabled: !!user?.id,

@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { apiCall } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useIsFollowing, useFollowUser, useUnfollowUser, useSocialCounts } from "@/hooks/useFollow";
 import { useThemeColors } from "@/constants/colors";
@@ -21,8 +21,8 @@ export default function UserProfileScreen() {
   const { data: profile, isLoading } = useQuery({
     queryKey: ["userProfile", id],
     queryFn: async () => {
-      const { data } = await supabase.from("users").select("*").eq("id", id!).single();
-      return data;
+      const res = await apiCall<{ data: any }>(`/api/users/${id}`);
+      return res.data;
     },
     enabled: !!id,
   });
@@ -35,12 +35,8 @@ export default function UserProfileScreen() {
   const { data: founds } = useQuery({
     queryKey: ["userFounds", id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("founder_badges")
-        .select("id, item_id, awarded_at, items!inner(id, name, slug, photo_url)")
-        .eq("user_id", id!)
-        .order("awarded_at", { ascending: false });
-      return data ?? [];
+      const res = await apiCall<{ data: any[] }>(`/api/users/${id}/founds`);
+      return res.data ?? [];
     },
     enabled: !!id,
   });

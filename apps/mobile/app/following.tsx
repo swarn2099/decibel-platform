@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { ChevronLeft } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { apiCall } from "@/lib/api";
 import { useThemeColors } from "@/constants/colors";
 
 export default function FollowingScreen() {
@@ -15,14 +15,10 @@ export default function FollowingScreen() {
   const { data: following, isLoading } = useQuery({
     queryKey: ["following", fanId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("follows")
-        .select("following_id, users!follows_following_id_fkey(id, name, avatar_url)")
-        .eq("follower_id", fanId!);
-      return (data ?? []).map((row) => {
-        const u = Array.isArray(row.users) ? row.users[0] : row.users;
-        return { id: (u as any)?.id, name: (u as any)?.name, avatar_url: (u as any)?.avatar_url };
-      }).filter((u) => u.id);
+      const res = await apiCall<{ data: { id: string; name: string; avatar_url: string | null }[] }>(
+        `/api/users/${fanId}/following`
+      );
+      return res.data ?? [];
     },
     enabled: !!fanId,
   });
