@@ -47,7 +47,8 @@
           "iosActivationRules": {
             "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
             "NSExtensionActivationSupportsText": true
-          }
+          },
+          "disableExpoSharing": true
         }
       ]
     ],
