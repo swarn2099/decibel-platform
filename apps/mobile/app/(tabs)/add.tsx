@@ -67,14 +67,26 @@ export default function AddScreen() {
     }, {
       onSuccess: (res) => {
         const data = (res as any).data ?? res;
-        const slug = data?.performer?.slug;
+        // New items return the item with slug; existing items return the badge
+        const slug = data?.slug ?? data?.performer?.slug;
+        const isNew = !validateMutation.data?.existing_item_id;
         Alert.alert(
-          data?.is_founder ? "Founded!" : "Collected!",
-          data?.is_founder ? `You're the first to find ${preview.name}!` : `${preview.name} added to your passport.`,
-          [{ text: "View", onPress: () => { if (slug) router.push(`/artist/${slug}` as any); } }, { text: "OK" }]
+          isNew ? "Founded!" : "Founded!",
+          isNew ? `You're the first to find ${preview.name}!` : `You founded ${preview.name}!`,
+          [
+            ...(slug ? [{ text: "View", onPress: () => router.push(`/artist/${slug}` as any) }] : []),
+            { text: "OK" },
+          ]
         );
         setLinkUrl("");
         validateMutation.reset();
+      },
+      onError: (error: Error) => {
+        if (error.message?.includes("409") || error.message?.includes("already")) {
+          Alert.alert("Already Founded", "This artist has already been founded by someone.");
+        } else {
+          Alert.alert("Error", error.message ?? "Something went wrong");
+        }
       },
     });
   }

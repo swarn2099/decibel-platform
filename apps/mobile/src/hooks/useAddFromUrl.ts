@@ -59,10 +59,19 @@ export function useFoundFromUrl() {
       spotify_id?: string;
       soundcloud_url?: string;
     }) => {
-      return apiCall<{ data: any }>("/api/founders", {
-        method: "POST",
-        body: JSON.stringify(params),
-      });
+      if (params.item_id) {
+        // Existing item — just create a founder badge
+        return apiCall<{ data: any }>("/api/founders", {
+          method: "POST",
+          body: JSON.stringify({ item_id: params.item_id }),
+        });
+      } else {
+        // New item — POST /api/items creates the item + founder badge
+        return apiCall<{ data: any }>("/api/items", {
+          method: "POST",
+          body: JSON.stringify(params),
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activity-feed"] });
