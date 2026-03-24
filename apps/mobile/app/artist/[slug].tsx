@@ -125,6 +125,28 @@ function SpotifyEmbed({ spotifyId }: { spotifyId: string }) {
   );
 }
 
+/** SoundCloud embed WebView */
+function SoundCloudEmbed({ soundcloudUrl }: { soundcloudUrl: string }) {
+  const colors = useThemeColors();
+  const url = soundcloudUrl.startsWith("http") ? soundcloudUrl : `https://${soundcloudUrl}`;
+  const embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true`;
+
+  return (
+    <View style={{ marginTop: 16 }}>
+      <Text style={{ fontSize: 13, fontFamily: "Poppins_600SemiBold", color: colors.text, marginBottom: 8 }}>SoundCloud</Text>
+      <View style={{ borderRadius: 12, overflow: "hidden", height: 300 }}>
+        <WebView
+          source={{ uri: embedUrl }}
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          scrollEnabled={false}
+          javaScriptEnabled
+          allowsInlineMediaPlayback
+        />
+      </View>
+    </View>
+  );
+}
+
 export default function ArtistProfileScreen() {
   const colors = useThemeColors();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -310,6 +332,11 @@ export default function ArtistProfileScreen() {
           {/* Spotify embed */}
           {artist.spotify_id && (
             <SpotifyEmbed spotifyId={artist.spotify_id} />
+          )}
+
+          {/* SoundCloud embed */}
+          {artist.soundcloud_url && !artist.spotify_id && (
+            <SoundCloudEmbed soundcloudUrl={artist.soundcloud_url} />
           )}
 
           {/* Metrics chart */}

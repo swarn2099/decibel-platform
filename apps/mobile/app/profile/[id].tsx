@@ -3,9 +3,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Grid3x3, Bookmark } from "lucide-react-native";
+import { ChevronLeft, Grid3x3, Bookmark, BarChart3 } from "lucide-react-native";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Svg, { Polyline, Line, Text as SvgText } from "react-native-svg";
 import { apiCall } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useIsFollowing, useFollowUser, useUnfollowUser, useSocialCounts } from "@/hooks/useFollow";
@@ -22,6 +23,83 @@ function categoryLabel(cat: string): string {
   return cat.charAt(0).toUpperCase() + cat.slice(1);
 }
 
+function formatListeners(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function StatsTabContent({ stats, colors, screenWidth }: { stats: any; colors: ReturnType<typeof useThemeColors>; screenWidth: number }) {
+  if (!stats) {
+    return <View style={{ alignItems: "center", paddingVertical: 40 }}><ActivityIndicator color={colors.pink} /></View>;
+  }
+
+  const timeline: { date: string; count: number }[] = stats.adds_timeline ?? [];
+  const W = screenWidth - 40;
+  const H = 160;
+  const PAD_L = 35; const PAD_R = 10; const PAD_T = 10; const PAD_B = 25;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+
+  let chartSvg = null;
+  if (timeline.length >= 2) {
+    const vals = timeline.map((d) => d.count);
+    const maxV = Math.max(...vals, 1);
+    const points = timeline.map((d, i) => {
+      const x = PAD_L + (i / (timeline.length - 1)) * chartW;
+      const y = PAD_T + chartH - (d.count / maxV) * chartH;
+      return `${x},${y}`;
+    }).join(" ");
+
+    const yLabels = [0, Math.ceil(maxV / 2), maxV].map((v) => ({
+      label: String(v), y: PAD_T + chartH - (v / maxV) * chartH,
+    }));
+
+    chartSvg = (
+      <Svg width={W} height={H}>
+        {yLabels.map((yl, i) => (
+          <Line key={i} x1={PAD_L} y1={yl.y} x2={PAD_L + chartW} y2={yl.y} stroke={colors.isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"} strokeWidth={1} />
+        ))}
+        {yLabels.map((yl, i) => (
+          <SvgText key={`yl${i}`} x={PAD_L - 6} y={yl.y + 4} fill={colors.textSecondary} fontSize={9} textAnchor="end">{yl.label}</SvgText>
+        ))}
+        <SvgText x={PAD_L} y={H - 4} fill={colors.textSecondary} fontSize={9} textAnchor="start">{timeline[0].date.slice(5)}</SvgText>
+        <SvgText x={PAD_L + chartW} y={H - 4} fill={colors.textSecondary} fontSize={9} textAnchor="end">{timeline[timeline.length - 1].date.slice(5)}</SvgText>
+        <Polyline points={points} fill="none" stroke={colors.purple} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      </Svg>
+    );
+  }
+
+  return (
+    <View style={{ paddingHorizontal: 20, paddingTop: 8, gap: 16 }}>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 14, alignItems: "center" }}>
+          <Text style={{ fontSize: 22, fontFamily: "Poppins_700Bold", color: colors.text }}>{stats.total_finds}</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Total Finds</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 14, alignItems: "center" }}>
+          <Text style={{ fontSize: 22, fontFamily: "Poppins_700Bold", color: colors.text }}>{formatListeners(stats.avg_listeners)}</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Avg Listeners</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 14, alignItems: "center" }}>
+          <Text style={{ fontSize: 22, fontFamily: "Poppins_700Bold", color: colors.purple }}>#{stats.rank}</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>of {stats.total_peers}</Text>
+        </View>
+      </View>
+      <View>
+        <Text style={{ fontSize: 13, fontFamily: "Poppins_600SemiBold", color: colors.text, marginBottom: 8 }}>Adds per Day (30d)</Text>
+        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 12 }}>
+          {chartSvg ?? (
+            <View style={{ height: 100, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 13, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>Not enough data yet</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function UserProfileScreen() {
   const colors = useThemeColors();
   const router = useRouter();
@@ -29,7 +107,7 @@ export default function UserProfileScreen() {
   const currentUser = useAuthStore((s) => s.user);
   const isOwnProfile = currentUser?.id === id;
   const { width: screenWidth } = useWindowDimensions();
-  const [activeTab, setActiveTab] = useState<"finds" | "collections">("finds");
+  const [activeTab, setActiveTab] = useState<"finds" | "collections" | "stats">("finds");
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["userProfile", id],
@@ -45,7 +123,6 @@ export default function UserProfileScreen() {
   const unfollowMutation = useUnfollowUser();
   const { data: socialCounts } = useSocialCounts(id);
 
-  // Use passport endpoint (same as own profile) to get combined + deduplicated list
   const { data: passportItems } = useQuery({
     queryKey: ["passport", id],
     queryFn: async () => {
@@ -55,9 +132,19 @@ export default function UserProfileScreen() {
     enabled: !!id,
   });
 
+  const { data: profileStats } = useQuery({
+    queryKey: ["profileStats", id],
+    queryFn: async () => {
+      const res = await apiCall<{ data: any }>(`/api/users/${id}/profile-stats`);
+      return res.data;
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!id,
+  });
+
   const finds = (passportItems ?? []).filter((p: any) => p.is_founder);
   const collections = (passportItems ?? []).filter((p: any) => !p.is_founder);
-  const activeItems = activeTab === "finds" ? finds : collections;
+  const activeItems = activeTab === "stats" ? [] : activeTab === "finds" ? finds : collections;
 
   if (isLoading || !profile) {
     return (
@@ -80,7 +167,6 @@ export default function UserProfileScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
-      {/* Top bar */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8 }}>
         <Pressable onPress={() => router.back()} style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}>
           <ChevronLeft size={24} color={colors.text} />
@@ -124,12 +210,10 @@ export default function UserProfileScreen() {
               </View>
             </View>
 
-            {/* Name */}
             <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
               <Text style={{ fontSize: 14, fontFamily: "Poppins_600SemiBold", color: colors.text }}>{name}</Text>
             </View>
 
-            {/* Follow button */}
             {!isOwnProfile && (
               <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
                 <Pressable
@@ -147,23 +231,21 @@ export default function UserProfileScreen() {
             )}
 
             {/* Tabs with icons */}
-            <View style={{ flexDirection: "row", justifyContent: "center", gap: 32, paddingTop: 4, marginBottom: 10 }}>
-              <Pressable onPress={() => setActiveTab("finds")} style={{ alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: activeTab === "finds" ? colors.text : "transparent" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Grid3x3 size={16} color={activeTab === "finds" ? colors.text : colors.textSecondary} strokeWidth={activeTab === "finds" ? 2.5 : 1.8} />
-                  <Text style={{ fontSize: 12, fontFamily: activeTab === "finds" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "finds" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                    Finds
-                  </Text>
-                </View>
-              </Pressable>
-              <Pressable onPress={() => setActiveTab("collections")} style={{ alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: activeTab === "collections" ? colors.text : "transparent" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Bookmark size={16} color={activeTab === "collections" ? colors.text : colors.textSecondary} strokeWidth={activeTab === "collections" ? 2.5 : 1.8} />
-                  <Text style={{ fontSize: 12, fontFamily: activeTab === "collections" ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === "collections" ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                    Collections
-                  </Text>
-                </View>
-              </Pressable>
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 24, paddingTop: 4, marginBottom: 10 }}>
+              {([
+                { key: "finds" as const, label: "Finds", Icon: Grid3x3 },
+                { key: "collections" as const, label: "Collections", Icon: Bookmark },
+                { key: "stats" as const, label: "Stats", Icon: BarChart3 },
+              ]).map(({ key, label, Icon }) => (
+                <Pressable key={key} onPress={() => setActiveTab(key)} style={{ alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: activeTab === key ? colors.text : "transparent" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                    <Icon size={15} color={activeTab === key ? colors.text : colors.textSecondary} strokeWidth={activeTab === key ? 2.5 : 1.8} />
+                    <Text style={{ fontSize: 11, fontFamily: activeTab === key ? "Poppins_600SemiBold" : "Poppins_400Regular", color: activeTab === key ? colors.text : colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                      {label}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
             </View>
           </View>
         }
@@ -178,7 +260,6 @@ export default function UserProfileScreen() {
                   <Text style={{ fontSize: 28, color: colors.textSecondary }}>{(i?.name ?? "?").charAt(0).toUpperCase()}</Text>
                 </View>
               )}
-              {/* Smooth gradient fade — multi-stop for frosted look */}
               <LinearGradient
                 colors={["transparent", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)", "rgba(0,0,0,0.5)", "rgba(0,0,0,0.8)"]}
                 locations={[0, 0.3, 0.5, 0.75, 1]}
@@ -203,11 +284,15 @@ export default function UserProfileScreen() {
           );
         }}
         ListEmptyComponent={
-          <View style={{ alignItems: "center", paddingVertical: 40 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>
-              {activeTab === "finds" ? "No finds yet" : "No collections yet"}
-            </Text>
-          </View>
+          activeTab === "stats" ? (
+            <StatsTabContent stats={profileStats} colors={colors} screenWidth={screenWidth} />
+          ) : (
+            <View style={{ alignItems: "center", paddingVertical: 40 }}>
+              <Text style={{ fontSize: 14, fontFamily: "Poppins_400Regular", color: colors.textSecondary }}>
+                {activeTab === "finds" ? "No finds yet" : "No collections yet"}
+              </Text>
+            </View>
+          )
         }
       />
     </SafeAreaView>
