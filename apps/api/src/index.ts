@@ -19,6 +19,12 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
+// Request logging
+app.use((req, _res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 // Public routes
 app.use('/health', healthRouter);
 
@@ -34,7 +40,7 @@ app.use('/api/notifications', authMiddleware, notificationsRouter);
 
 app.use(errorHandler);
 
-const PORT = process.env.API_PORT || 3001;
+const PORT = process.env.PORT || process.env.API_PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Decibel API running on port ${PORT}`);
 });

@@ -55,9 +55,9 @@ export function useSocialCounts(userId?: string) {
   return useQuery({
     queryKey: ["socialCounts", targetId],
     queryFn: async () => {
-      const res = await apiCall<{ data: { followers_count: number; following_count: number } }>(
-        `/api/users/${targetId}/social-counts`
-      );
+      // Use /me/ for own profile to avoid auth ID vs DB ID mismatch
+      const path = userId ? `/api/users/${userId}/social-counts` : `/api/users/me/social-counts`;
+      const res = await apiCall<{ data: { followers_count: number; following_count: number } }>(path);
       return res.data;
     },
     enabled: !!targetId,

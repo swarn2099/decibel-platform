@@ -40,6 +40,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     }
   }
 
+  console.log(`Auth: ${user.email} | auth_id=${user.id} → db_id=${dbUserId}`);
   // Attach both IDs: auth_id for Supabase auth calls, id for DB queries
   (req as any).user = { ...user, id: dbUserId, auth_id: user.id };
   next();

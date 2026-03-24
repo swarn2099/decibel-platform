@@ -39,6 +39,14 @@ usersRouter.put('/me', async (req: Request, res: Response) => {
   res.json({ data });
 });
 
+// Resolve "me" to the authenticated user's DB id for all /:id routes
+usersRouter.param('id', (req: Request, _res: Response, next, id) => {
+  if (id === 'me') {
+    req.params.id = (req as any).user.id;
+  }
+  next();
+});
+
 // GET /api/users/:id
 usersRouter.get('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;

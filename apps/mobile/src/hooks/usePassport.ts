@@ -25,7 +25,7 @@ export function usePassport() {
     queryKey: ["passport", user?.id],
     queryFn: async () => {
       const res = await apiCall<{ data: PassportItem[] }>(
-        `/api/users/${user!.id}/passport`
+        `/api/users/me/passport`
       );
       return res.data ?? [];
     },
