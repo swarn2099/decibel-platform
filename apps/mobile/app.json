@@ -40,16 +40,7 @@
       "expo-font",
       "expo-splash-screen",
       "expo-secure-store",
-      "expo-image",
-      [
-        "expo-share-intent",
-        {
-          "iosActivationRules": {
-            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
-            "NSExtensionActivationSupportsText": true
-          }
-        }
-      ]
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true
