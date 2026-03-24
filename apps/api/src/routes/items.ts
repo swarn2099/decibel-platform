@@ -186,6 +186,24 @@ itemsRouter.get('/:id/founder', async (req: Request, res: Response) => {
   });
 });
 
+// GET /api/items/:id/my-status — check if current user founded or collected this item
+itemsRouter.get('/:id/my-status', async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const { id } = req.params;
+
+  const [founderRes, collectionRes] = await Promise.all([
+    supabase.from('founder_badges').select('id').eq('item_id', id).eq('user_id', user.id).maybeSingle(),
+    supabase.from('collections').select('id').eq('item_id', id).eq('user_id', user.id).maybeSingle(),
+  ]);
+
+  res.json({
+    data: {
+      is_founder: !!founderRes.data,
+      is_collected: !!collectionRes.data,
+    },
+  });
+});
+
 // GET /api/items/:id/metrics-history — monthly listeners over time
 itemsRouter.get('/:id/metrics-history', async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -198,12 +216,11 @@ itemsRouter.get('/:id/metrics-history', async (req: Request, res: Response) => {
 
   if (error) { res.status(500).json({ error: error.message }); return; }
 
-  // Also get founding snapshot from founder_badge
-  const { data: badge } = await supabase
-    .from('founder_badges')
-    .select('awarded_at, metric_snapshot')
-    .eq('item_id', id)
-    .maybeSingle();
+  // Get founding snapshot + current item data
+  const [{ data: badge }, { data: item }] = await Promise.all([
+    supabase.from('founder_badges').select('awarded_at, metric_snapshot').eq('item_id', id).maybeSingle(),
+    supabase.from('items').select('monthly_listeners').eq('id', id).single(),
+  ]);
 
   const points: { date: string; listeners: number }[] = [];
 
@@ -222,6 +239,16 @@ itemsRouter.get('/:id/metrics-history', async (req: Request, res: Response) => {
     const listeners = d?.monthly_listeners ?? d?.follower_count ?? 0;
     if (listeners > 0) {
       points.push({ date: row.metric_date, listeners });
+    }
+  }
+
+  // Add current value as today's point (if different from last point)
+  const currentListeners = item?.monthly_listeners ?? 0;
+  const today = new Date().toISOString().split('T')[0];
+  if (currentListeners > 0) {
+    const lastPoint = points[points.length - 1];
+    if (!lastPoint || lastPoint.date !== today) {
+      points.push({ date: today, listeners: currentListeners });
     }
   }
 

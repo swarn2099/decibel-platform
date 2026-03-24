@@ -54,22 +54,15 @@ export function useArtistFounder(itemId: string | undefined) {
 }
 
 export function useMyArtistStatus(itemId: string | undefined) {
-  // Status comes from the by-slug response, but we can also check directly
   return useQuery<"founded" | "collected" | "none">({
     queryKey: ["myArtistStatus", itemId],
     queryFn: async () => {
-      // Check founder badge
-      const res = await apiCall<{ data: { is_founded: boolean; founder: any } }>(
-        `/api/founders/check/${itemId}`
+      // Check if current user founded this item
+      const res = await apiCall<{ data: { is_founder: boolean; is_collected: boolean } }>(
+        `/api/items/${itemId}/my-status`
       );
-      if (res.data?.is_founded) {
-        // Check if it's the current user
-        return "founded"; // simplified — full check would compare user IDs
-      }
-      // Check collection
-      const colRes = await apiCall<{ data: string[] }>(`/api/collections/my-ids`);
-      const ids = colRes.data ?? [];
-      if (ids.includes(itemId!)) return "collected";
+      if (res.data?.is_founder) return "founded";
+      if (res.data?.is_collected) return "collected";
       return "none";
     },
     staleTime: 5 * 60 * 1000,
