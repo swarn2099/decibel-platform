@@ -5,7 +5,6 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
-import { WebView } from "react-native-webview";
 import Svg, { Polyline, Line, Text as SvgText } from "react-native-svg";
 import { ChevronLeft, Users, Crown, ExternalLink, Star } from "lucide-react-native";
 import { Colors, useThemeColors } from "@/constants/colors";
@@ -104,24 +103,23 @@ function ListenersChart({ data, colors }: { data: { date: string; listeners: num
   );
 }
 
-/** Spotify embed WebView */
-function SpotifyEmbed({ spotifyId }: { spotifyId: string }) {
+/** Spotify link card (WebView embed requires native rebuild) */
+function SpotifyLink({ spotifyId, artistName }: { spotifyId: string; artistName: string }) {
   const colors = useThemeColors();
-  const embedUrl = `https://open.spotify.com/embed/artist/${spotifyId}?utm_source=generator&theme=0`;
+  const spotifyUrl = `https://open.spotify.com/artist/${spotifyId}`;
 
   return (
-    <View style={{ marginTop: 16 }}>
-      <Text style={{ fontSize: 13, fontFamily: "Poppins_600SemiBold", color: colors.text, marginBottom: 8 }}>Top Tracks</Text>
-      <View style={{ borderRadius: 12, overflow: "hidden", height: 352 }}>
-        <WebView
-          source={{ uri: embedUrl }}
-          style={{ flex: 1, backgroundColor: "transparent" }}
-          scrollEnabled={false}
-          javaScriptEnabled
-          allowsInlineMediaPlayback
-        />
+    <Pressable
+      onPress={() => Linking.openURL(spotifyUrl)}
+      style={{ marginTop: 16, backgroundColor: "#1DB954", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 10 }}
+    >
+      <Text style={{ fontSize: 20 }}>🎵</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14, fontFamily: "Poppins_600SemiBold", color: "#FFFFFF" }}>Listen on Spotify</Text>
+        <Text style={{ fontSize: 12, fontFamily: "Poppins_400Regular", color: "rgba(255,255,255,0.8)" }}>{artistName}</Text>
       </View>
-    </View>
+      <ExternalLink size={18} color="#FFFFFF" />
+    </Pressable>
   );
 }
 
@@ -285,9 +283,9 @@ export default function ArtistProfileScreen() {
             <Text style={{ fontSize: 14, fontFamily: "Poppins_400Regular", color: colors.textSecondary, marginTop: 16, lineHeight: 22 }}>{artist.bio}</Text>
           )}
 
-          {/* Spotify embed */}
+          {/* Spotify link */}
           {artist.spotify_id && (
-            <SpotifyEmbed spotifyId={artist.spotify_id} />
+            <SpotifyLink spotifyId={artist.spotify_id} artistName={artist.name} />
           )}
 
           {/* Metrics chart */}
