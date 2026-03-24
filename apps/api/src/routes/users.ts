@@ -172,11 +172,12 @@ usersRouter.get('/:id/passport', async (req: Request, res: Response) => {
 
   if (error) { res.status(500).json({ error: error.message }); return; }
 
-  // Get founder badges
+  // Get founder badges (sorted newest first)
   const { data: foundedItems } = await supabase
     .from('founder_badges')
     .select('id, item_id, awarded_at, items!inner(id, name, slug, photo_url, genres, category)')
-    .eq('user_id', id);
+    .eq('user_id', id)
+    .order('awarded_at', { ascending: false });
 
   const foundedItemIds = new Set((foundedItems ?? []).map((f: any) => f.item_id));
 
@@ -212,6 +213,9 @@ usersRouter.get('/:id/passport', async (req: Request, res: Response) => {
       item,
     });
   }
+
+  // Sort all items by date, newest first
+  result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   res.json({ data: result });
 });

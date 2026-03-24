@@ -19,6 +19,7 @@ export type ScrapedPreview = {
   metrics: {
     monthly_listeners?: number;
     follower_count?: number;
+    popularity?: number;
   };
   spotify_url?: string;
   spotify_id?: string;
@@ -26,7 +27,8 @@ export type ScrapedPreview = {
   apple_music_url?: string;
 };
 
-const FOUNDER_THRESHOLD = 1_000_000; // Below 1M Spotify monthly listeners = foundable
+const FOLLOWER_THRESHOLD = 500_000; // Spotify followers > 500K = too big
+const POPULARITY_THRESHOLD = 65; // Spotify popularity > 65 = too big (0-100 scale)
 
 export function detectUrl(url: string): UrlDetection {
   const lower = url.toLowerCase();
@@ -204,8 +206,9 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
         platform: 'spotify',
         genres: spotifyArtist.genres,
         metrics: {
-          monthly_listeners: spotifyArtist.followers, // Spotify API returns followers; monthly listeners aren't in the API
+          monthly_listeners: spotifyArtist.followers,
           follower_count: spotifyArtist.followers,
+          popularity: spotifyArtist.popularity,
         },
         spotify_url: `https://open.spotify.com/artist/${spotifyArtist.id}`,
         spotify_id: spotifyArtist.id,
@@ -257,6 +260,7 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
       metrics: {
         monthly_listeners: spotifyMatch?.followers ?? undefined,
         follower_count: deezer?.follower_count ?? undefined,
+        popularity: spotifyMatch?.popularity ?? undefined,
       },
       apple_music_url: url,
       // Store Spotify info for cross-reference
@@ -291,6 +295,7 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
       metrics: {
         monthly_listeners: spotifyMatch?.followers ?? undefined,
         follower_count: deezer?.follower_count ?? undefined,
+        popularity: spotifyMatch?.popularity ?? undefined,
       },
       soundcloud_url: url,
       spotify_url: spotifyMatch ? `https://open.spotify.com/artist/${spotifyMatch.id}` : undefined,
@@ -312,9 +317,11 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
 }
 
 export function isAboveThreshold(preview: ScrapedPreview): boolean {
-  // Spotify followers > 1M = too big
-  if (preview.metrics.monthly_listeners && preview.metrics.monthly_listeners > FOUNDER_THRESHOLD) return true;
-  // Deezer fans > 13K ≈ correlates to big artist
+  // Spotify popularity > 65 = too big (catches artists like The XX with high monthly listeners)
+  if (preview.metrics.popularity && preview.metrics.popularity > POPULARITY_THRESHOLD) return true;
+  // Spotify followers > 500K = too big
+  if (preview.metrics.monthly_listeners && preview.metrics.monthly_listeners > FOLLOWER_THRESHOLD) return true;
+  // Deezer fans > 13K ≈ big artist (fallback when no Spotify data)
   if (preview.metrics.follower_count && preview.metrics.follower_count > 13000 && !preview.metrics.monthly_listeners) return true;
   return false;
 }
