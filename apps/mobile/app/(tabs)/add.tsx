@@ -170,8 +170,12 @@ export default function AddScreen() {
         {preview && (
           <View style={{ marginTop: 16 }}>
             <View style={{ backgroundColor: colors.card, borderRadius: 16, overflow: "hidden" }}>
-              {preview.photo_url && (
+              {preview.photo_url ? (
                 <Image source={{ uri: preview.photo_url }} style={{ width: "100%", height: 200 }} contentFit="cover" />
+              ) : (
+                <View style={{ width: "100%", height: 160, backgroundColor: colors.purple + "15", justifyContent: "center", alignItems: "center" }}>
+                  <Text style={{ fontSize: 48, fontFamily: "Poppins_700Bold", color: colors.purple + "40" }}>{preview.name.charAt(0).toUpperCase()}</Text>
+                </View>
               )}
               <View style={{ padding: 16 }}>
                 <Text style={{ fontSize: 20, fontFamily: "Poppins_700Bold", color: colors.text }}>{preview.name}</Text>
@@ -200,17 +204,20 @@ export default function AddScreen() {
 
             {/* Action buttons */}
             <View style={{ marginTop: 16, gap: 10 }}>
-              {!existingFounder && !preview.is_above_threshold ? (
-                <Pressable onPress={handleFound} disabled={foundMutation.isPending} style={{ backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 14, alignItems: "center", opacity: foundMutation.isPending ? 0.6 : 1 }}>
-                  <Text style={{ color: "#000000", fontSize: 16, fontFamily: "Poppins_700Bold" }}>★ Found This</Text>
-                </Pressable>
-              ) : existingFounder ? (
+              {existingFounder ? (
                 <Pressable onPress={handleCollect} disabled={collectMutation.isPending} style={{ backgroundColor: colors.pink, borderRadius: 12, paddingVertical: 14, alignItems: "center", opacity: collectMutation.isPending ? 0.6 : 1 }}>
                   <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: "Poppins_600SemiBold" }}>Collect</Text>
                 </Pressable>
+              ) : preview.is_above_threshold ? (
+                <View style={{ backgroundColor: colors.card, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 20, alignItems: "center", gap: 4 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 15, fontFamily: "Poppins_600SemiBold" }}>Too mainstream</Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 12, fontFamily: "Poppins_400Regular", textAlign: "center" }}>
+                    Decibel is for discovering underground finds before they blow up
+                  </Text>
+                </View>
               ) : (
-                <Pressable onPress={handleFound} disabled={foundMutation.isPending} style={{ backgroundColor: colors.pink, borderRadius: 12, paddingVertical: 14, alignItems: "center", opacity: foundMutation.isPending ? 0.6 : 1 }}>
-                  <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: "Poppins_600SemiBold" }}>Add to Passport</Text>
+                <Pressable onPress={handleFound} disabled={foundMutation.isPending} style={{ backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 14, alignItems: "center", opacity: foundMutation.isPending ? 0.6 : 1 }}>
+                  <Text style={{ color: "#000000", fontSize: 16, fontFamily: "Poppins_700Bold" }}>★ Found This</Text>
                 </Pressable>
               )}
 
