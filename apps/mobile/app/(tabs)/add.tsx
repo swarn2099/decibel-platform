@@ -77,6 +77,7 @@ export default function AddScreen() {
       spotify_url: preview.spotify_url,
       spotify_id: preview.spotify_id,
       soundcloud_url: preview.soundcloud_url,
+      instagram_handle: (preview as any).instagram_handle,
     }, {
       onSuccess: (res) => {
         const data = (res as any).data ?? res;

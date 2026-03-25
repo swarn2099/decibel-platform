@@ -58,6 +58,7 @@ export function useFoundFromUrl() {
       spotify_url?: string;
       spotify_id?: string;
       soundcloud_url?: string;
+      instagram_handle?: string;
     }) => {
       if (params.item_id) {
         // Existing item — just create a founder badge

@@ -258,7 +258,8 @@ itemsRouter.get('/:id/metrics-history', async (req: Request, res: Response) => {
 // POST /api/items — create new item (with founder badge)
 itemsRouter.post('/', async (req: Request, res: Response) => {
   const user = (req as any).user;
-  const { name, slug, category, photo_url, bio, spotify_url, spotify_id, soundcloud_url, instagram_handle, city, genres, monthly_listeners } = req.body;
+  const { name, slug, category, photo_url, bio, soundcloud_url, instagram_handle, city, genres, monthly_listeners } = req.body;
+  let { spotify_url, spotify_id } = req.body;
 
   if (!name) { res.status(400).json({ error: 'Name is required' }); return; }
 
@@ -273,6 +274,21 @@ itemsRouter.post('/', async (req: Request, res: Response) => {
 
   if (existing) { res.status(409).json({ error: 'Item already exists', item_id: existing.id }); return; }
 
+  // If no photo, try to get one from Spotify search (works for any name)
+  let finalPhotoUrl = photo_url || null;
+  if (!finalPhotoUrl && !spotify_id) {
+    try {
+      const { searchSpotifyArtist } = await import('../services/spotify');
+      const spotifyMatch = await searchSpotifyArtist(name);
+      if (spotifyMatch?.image_url) finalPhotoUrl = spotifyMatch.image_url;
+      // Also grab spotify info if we found a match
+      if (spotifyMatch && !spotify_id) {
+        spotify_url = spotify_url || `https://open.spotify.com/artist/${spotifyMatch.id}`;
+        spotify_id = spotifyMatch.id;
+      }
+    } catch {}
+  }
+
   // Create item
   const { data: item, error: itemError } = await supabase
     .from('items')
@@ -280,13 +296,13 @@ itemsRouter.post('/', async (req: Request, res: Response) => {
       name,
       slug: itemSlug,
       category: category || 'music',
-      photo_url: photo_url || null,
+      photo_url: finalPhotoUrl,
       bio: bio || null,
       spotify_url: spotify_url || null,
       spotify_id: spotify_id || null,
       soundcloud_url: soundcloud_url || null,
       instagram_handle: instagram_handle || null,
-      city: city || 'Chicago',
+      city: city || null,
       genres: genres || [],
       monthly_listeners: monthly_listeners || null,
     })
