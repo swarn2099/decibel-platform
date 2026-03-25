@@ -288,11 +288,10 @@ itemsRouter.post('/', async (req: Request, res: Response) => {
           spotify_id = spotifyMatch.id;
         }
       } else {
-        // Non-music: try Clearbit logo API (free, works for brands/companies)
-        const brandSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const clearbitUrl = `https://logo.clearbit.com/${brandSlug}.com`;
-        const logoRes = await fetch(clearbitUrl, { method: 'HEAD', redirect: 'follow' });
-        if (logoRes.ok) finalPhotoUrl = clearbitUrl;
+        // Non-music: try scraping brand website for og:image or Google favicon
+        const { findBrandImage } = await import('../services/scraper');
+        const brandImg = await findBrandImage(name);
+        if (brandImg) finalPhotoUrl = brandImg;
       }
     } catch {}
   }

@@ -103,6 +103,45 @@ function decodeEntities(str: string): string {
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 }
 
+/** Try to find a brand image by scraping their website or using Google favicon */
+export async function findBrandImage(name: string): Promise<string | null> {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const domains = [
+    `${slug}.com`,
+    `www.${slug}.com`,
+    `${slug}usa.com`,
+    `${slug}.co`,
+  ];
+
+  // Try scraping each domain for og:image
+  for (const domain of domains) {
+    try {
+      const res = await fetch(`https://${domain}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Decibel/1.0)' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+        ?? html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+      if (ogMatch?.[1]) {
+        const imgUrl = ogMatch[1];
+        return imgUrl.startsWith('http') ? imgUrl : `https://${domain}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`;
+      }
+    } catch {}
+  }
+
+  // Fallback: Google's high-res favicon service
+  const googleFavicon = `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domains[0]}&size=256`;
+  try {
+    const res = await fetch(googleFavicon, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    if (res.ok) return googleFavicon;
+  } catch {}
+
+  return null;
+}
+
 /** Scrape generic page meta tags */
 async function scrapeMetaTags(url: string): Promise<{ name?: string; photo_url?: string; description?: string } | null> {
   try {
@@ -268,15 +307,10 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
       description: meta?.description,
     });
 
-    // Try Clearbit for a logo
+    // Try to find a photo: website scrape → Google favicon
     let photo = meta?.photo_url ?? null;
     if (!photo) {
-      try {
-        const brandSlug = finalName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const clearbitUrl = `https://logo.clearbit.com/${brandSlug}.com`;
-        const logoRes = await fetch(clearbitUrl, { method: 'HEAD', redirect: 'follow' });
-        if (logoRes.ok) photo = clearbitUrl;
-      } catch {}
+      photo = await findBrandImage(finalName);
     }
 
     return {
