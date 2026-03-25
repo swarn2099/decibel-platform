@@ -274,17 +274,25 @@ itemsRouter.post('/', async (req: Request, res: Response) => {
 
   if (existing) { res.status(409).json({ error: 'Item already exists', item_id: existing.id }); return; }
 
-  // If no photo, try to get one from Spotify search (works for any name)
+  // If no photo, try to get one based on category
   let finalPhotoUrl = photo_url || null;
-  if (!finalPhotoUrl && !spotify_id) {
+  if (!finalPhotoUrl) {
     try {
-      const { searchSpotifyArtist } = await import('../services/spotify');
-      const spotifyMatch = await searchSpotifyArtist(name);
-      if (spotifyMatch?.image_url) finalPhotoUrl = spotifyMatch.image_url;
-      // Also grab spotify info if we found a match
-      if (spotifyMatch && !spotify_id) {
-        spotify_url = spotify_url || `https://open.spotify.com/artist/${spotifyMatch.id}`;
-        spotify_id = spotifyMatch.id;
+      if (category === 'music' && !spotify_id) {
+        // Music: search Spotify for photo + ID
+        const { searchSpotifyArtist } = await import('../services/spotify');
+        const spotifyMatch = await searchSpotifyArtist(name);
+        if (spotifyMatch?.image_url) finalPhotoUrl = spotifyMatch.image_url;
+        if (spotifyMatch && !spotify_id) {
+          spotify_url = spotify_url || `https://open.spotify.com/artist/${spotifyMatch.id}`;
+          spotify_id = spotifyMatch.id;
+        }
+      } else {
+        // Non-music: try Clearbit logo API (free, works for brands/companies)
+        const brandSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const clearbitUrl = `https://logo.clearbit.com/${brandSlug}.com`;
+        const logoRes = await fetch(clearbitUrl, { method: 'HEAD', redirect: 'follow' });
+        if (logoRes.ok) finalPhotoUrl = clearbitUrl;
       }
     } catch {}
   }
