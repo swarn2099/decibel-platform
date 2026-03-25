@@ -257,19 +257,37 @@ export async function scrapeFromUrl(url: string): Promise<ScrapedPreview | null>
 
     // Fallback: meta tags + AI
     const meta = await scrapeMetaTags(url);
-    if (meta?.name) {
-      const cleanedName = cleanInstagramName(meta.name);
-      const classification = await classifyEntity({ name: cleanedName, platform: 'instagram', description: meta.description });
-      return {
-        name: classification.name ?? cleanedName,
-        photo_url: meta.photo_url ?? null,
-        category: classification.category,
-        platform: 'instagram',
-        genres: [],
-        metrics: { underground_score: classification.score },
-        instagram_handle: detection.identifier,
-      };
+    const cleanedName = meta?.name ? cleanInstagramName(meta.name) : null;
+
+    // Final fallback: use the handle as the name (capitalize it)
+    const finalName = cleanedName || detection.identifier!.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    const classification = await classifyEntity({
+      name: finalName,
+      platform: 'instagram',
+      description: meta?.description,
+    });
+
+    // Try Clearbit for a logo
+    let photo = meta?.photo_url ?? null;
+    if (!photo) {
+      try {
+        const brandSlug = finalName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const clearbitUrl = `https://logo.clearbit.com/${brandSlug}.com`;
+        const logoRes = await fetch(clearbitUrl, { method: 'HEAD', redirect: 'follow' });
+        if (logoRes.ok) photo = clearbitUrl;
+      } catch {}
     }
+
+    return {
+      name: classification.name ?? finalName,
+      photo_url: photo,
+      category: classification.category,
+      platform: 'instagram',
+      genres: [],
+      metrics: { underground_score: classification.score },
+      instagram_handle: detection.identifier,
+    };
   }
 
   // ─── TIKTOK ───
